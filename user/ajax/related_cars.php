@@ -55,7 +55,7 @@ if (empty($relatedCars)) {
 foreach ($relatedCars as $mobil): ?>
     <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg border border-gray-100 hover:border-blue-100 group animate-fadeIn">
         <div class="h-48 bg-gray-200 relative overflow-hidden">
-            <?php if (!empty($mobil['foto_mobil']) && file_exists('../../assets/uploads/mobil/' . $mobil['foto_mobil'])): ?>
+            <?php if (!empty($mobil['foto_mobil'])): ?>
                 <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             <?php else: ?>
                 <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">

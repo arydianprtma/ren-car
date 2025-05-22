@@ -195,10 +195,10 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php foreach ($mobilTerbaru as $mobil): ?>
                         <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 group">
                             <div class="h-56 bg-gray-200 relative overflow-hidden">
-                                <?php if (!empty($mobil['foto_mobil']) && file_exists('../assets/uploads/mobil/' . $mobil['foto_mobil'])): ?>
+                                <?php if (!empty($mobil['foto_mobil'])): ?>
                                     <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                                 <?php else: ?>
-                                    <img src="<?= ASSETS_URL ?>images/car-placeholder.jpg" alt="Placeholder" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                    <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="Placeholder" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                                 <?php endif; ?>
                                 <div class="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
                                     <?= $mobil['nama_kategori'] ?? 'Uncategorized' ?>

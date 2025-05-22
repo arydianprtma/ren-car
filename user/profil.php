@@ -9,6 +9,10 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// Inisialisasi koneksi database
+$db = new Database();
+$conn = $db->getConnection();
+
 // Ambil data user dari database
 $userId = $_SESSION['user_id'];
 $user = [];
@@ -114,12 +118,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Validasi file
         $allowed_extensions = ['jpg', 'jpeg', 'png'];
-        $max_file_size = 2 * 1024 * 1024; // 2 MB
+        $max_file_size = 5 * 1024 * 1024; // 5 MB
         
         if (!in_array($file_extension, $allowed_extensions)) {
             $errors[] = "Format file KTP tidak valid. Hanya JPG, JPEG, dan PNG yang diperbolehkan.";
         } elseif ($_FILES['foto_ktp']['size'] > $max_file_size) {
-            $errors[] = "Ukuran file KTP terlalu besar. Maksimal 2MB.";
+            $errors[] = "Ukuran file KTP terlalu besar. Maksimal 5MB.";
         } else {
             // Upload file
             if (move_uploaded_file($_FILES['foto_ktp']['tmp_name'], $target_file)) {
@@ -287,7 +291,7 @@ include_once 'includes/header.php';
                                 </label>
                                 <span id="file_name" class="ml-3 text-sm text-gray-600">Tidak ada file dipilih</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
+                            <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 5MB.</p>
                             <?php if (!empty($user['foto_ktp'])): ?>
                             <p class="text-xs text-blue-600 mt-1">Anda sudah memiliki foto KTP. Upload baru untuk mengganti.</p>
                             <?php endif; ?>

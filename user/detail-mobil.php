@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
             <!-- Gambar Mobil -->
             <div>
                 <div class="bg-gray-100 rounded-xl overflow-hidden shadow-lg h-80 mb-6">
-                    <?php if (!empty($mobil['foto_mobil']) && file_exists('../assets/uploads/mobil/' . $mobil['foto_mobil'])): ?>
+                    <?php if (!empty($mobil['foto_mobil'])): ?>
                         <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover">
                     <?php else: ?>
                         <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover">

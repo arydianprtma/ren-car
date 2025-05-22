@@ -135,7 +135,7 @@ function getStatusLabel($status) {
                         <div class="grid grid-cols-1 md:grid-cols-12">
                             <!-- Gambar Mobil -->
                             <div class="md:col-span-3 h-48 md:h-48 bg-gray-100 relative">
-                                <?php if (!empty($pemesanan['foto_mobil']) && file_exists('../assets/uploads/mobil/' . $pemesanan['foto_mobil'])): ?>
+                                <?php if (!empty($pemesanan['foto_mobil'])): ?>
                                     <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $pemesanan['foto_mobil'] ?>" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">
                                 <?php else: ?>
                                     <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">

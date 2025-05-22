@@ -226,8 +226,8 @@ function getStatusLabel($status) {
             <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 mb-8">
                 <div class="grid grid-cols-1 md:grid-cols-3">
                     <!-- Gambar Mobil -->
-                    <div class="h-60 md:h-full bg-gray-100 relative">
-                        <?php if (!empty($pemesanan['foto_mobil']) && file_exists('../assets/uploads/mobil/' . $pemesanan['foto_mobil'])): ?>
+                    <div class="col-span-1 md:col-span-1 h-48 md:h-60 bg-gray-100 rounded-lg overflow-hidden">
+                        <?php if (!empty($pemesanan['foto_mobil'])): ?>
                             <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $pemesanan['foto_mobil'] ?>" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">
                         <?php else: ?>
                             <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">
