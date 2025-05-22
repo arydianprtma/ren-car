@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- always follow best practices
+- always follow coding standards
+- split large files into components
+- don't give incomplete code like */ Add any <something> code here
+- don't remove code unnecessarily
+- don't ever give "// ... rest of the code ..." as a response
+- don't you ever give *I/ ... existing" as a response
+- don't add placeholder methods like "ShouldDoSomething"
+
