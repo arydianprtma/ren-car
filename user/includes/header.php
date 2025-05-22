@@ -9,8 +9,13 @@ $conn = $database->getConnection();
 $unreadNotificationsCount = 0;
 if(isLoggedIn()) {
     require_once __DIR__ . '/../../classes/Notification.php';
-    $notificationObj = new Notification($conn);
-    $unreadNotificationsCount = $notificationObj->countUnreadNotifications($_SESSION['user_id']);
+    if (isset($conn)) {
+        $notificationObj = new Notification($conn);
+        $unreadNotificationsCount = $notificationObj->countUnreadNotifications($_SESSION['user_id']);
+    } else {
+        // Log error jika koneksi database gagal
+        error_log("Header: Koneksi database tidak tersedia");
+    }
 }
 
 // Fungsi untuk mengecek halaman aktif

@@ -17,23 +17,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['flash_message'] = 'Username dan password harus diisi!';
         $_SESSION['flash_type'] = 'red';
     } else {
-        // Cek login
-        $db = new Database();
-        $conn = $db->getConnection();
-        
-        $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username OR email = :email");
-        $stmt->bindParam(':username', $username);
-        $stmt->bindParam(':email', $username);
-        $stmt->execute();
-        
-        if ($stmt->rowCount() > 0) {
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (password_verify($password, $user['password'])) {
-                // Cek status user
-                if ($user['status'] == 'nonaktif') {
-                    $_SESSION['flash_message'] = 'Akun Anda dinonaktifkan, silakan hubungi admin!';
-                    $_SESSION['flash_type'] = 'red';
-                } else {
+        try {
+            // Cek login
+            $db = new Database();
+            $conn = $db->getConnection();
+            
+            if (!$conn) {
+                throw new Exception("Koneksi database gagal");
+            }
+            
+            $stmt = $conn->prepare("SELECT * FROM users WHERE (username = :username OR email = :email) AND status = 'aktif'");
+            $stmt->bindParam(':username', $username);
+            $stmt->bindParam(':email', $username);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (password_verify($password, $user['password'])) {
                     // Set session
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_username'] = $user['username'];
@@ -51,13 +51,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Redirect ke homepage
                     redirect(USER_URL);
+                } else {
+                    $_SESSION['flash_message'] = 'Password salah! Silakan periksa kembali password Anda.';
+                    $_SESSION['flash_type'] = 'red';
                 }
             } else {
-                $_SESSION['flash_message'] = 'Password salah!';
-                $_SESSION['flash_type'] = 'red';
+                // Coba cek apakah ada user dengan username tapi status nonaktif
+                $stmt = $conn->prepare("SELECT * FROM users WHERE (username = :username OR email = :email) AND status = 'nonaktif'");
+                $stmt->bindParam(':username', $username);
+                $stmt->bindParam(':email', $username);
+                $stmt->execute();
+                
+                if ($stmt->rowCount() > 0) {
+                    $_SESSION['flash_message'] = 'Akun Anda dinonaktifkan, silakan hubungi admin!';
+                    $_SESSION['flash_type'] = 'red';
+                } else {
+                    $_SESSION['flash_message'] = 'Username atau email tidak ditemukan!';
+                    $_SESSION['flash_type'] = 'red';
+                }
             }
-        } else {
-            $_SESSION['flash_message'] = 'Username atau email tidak ditemukan!';
+        } catch (Exception $e) {
+            error_log("Login error: " . $e->getMessage());
+            $_SESSION['flash_message'] = 'Terjadi kesalahan saat login. Silakan coba lagi.';
             $_SESSION['flash_type'] = 'red';
         }
     }

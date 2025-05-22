@@ -11,57 +11,72 @@ if (!isLoggedIn()) {
 }
 
 // Inisialisasi koneksi database
-$database = new Database();
-$conn = $database->getConnection();
-
-$userId = $_SESSION['user_id'];
-$notification = new Notification($conn);
-
-// Menandai semua sebagai sudah dibaca
-if (isset($_GET['action']) && $_GET['action'] === 'mark_all_read') {
-    $notification->markAllAsRead($userId);
-    $_SESSION['flash_message'] = "Semua notifikasi telah ditandai sebagai dibaca.";
-    $_SESSION['flash_type'] = "green";
-    header("Location: " . USER_URL . "notifikasi.php");
-    exit;
-}
-
-// Menandai satu notifikasi sebagai sudah dibaca
-if (isset($_GET['id']) && is_numeric($_GET['id'])) {
-    $notificationId = (int)$_GET['id'];
-    $notification->markAsRead($notificationId, $userId);
-}
-
-// Hapus notifikasi
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $notificationId = (int)$_GET['delete'];
-    if ($notification->deleteNotification($notificationId, $userId)) {
-        $_SESSION['flash_message'] = "Notifikasi berhasil dihapus.";
-        $_SESSION['flash_type'] = "green";
-    } else {
-        $_SESSION['flash_message'] = "Gagal menghapus notifikasi.";
-        $_SESSION['flash_type'] = "red";
-    }
-    header("Location: " . USER_URL . "notifikasi.php");
-    exit;
-}
-
-// Pagination
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$limit = 10;
-$offset = ($page - 1) * $limit;
-
-// Ambil daftar notifikasi
-$notifications = $notification->getUserNotifications($userId, $limit, $offset);
-
-// Hitung total notifikasi untuk pagination
 try {
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM notifikasi WHERE user_id = :user_id");
-    $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-    $stmt->execute();
-    $totalNotifications = $stmt->fetchColumn();
-    $totalPages = ceil($totalNotifications / $limit);
-} catch (PDOException $e) {
+    $database = new Database();
+    $conn = $database->getConnection();
+    
+    if (!$conn) {
+        throw new Exception("Koneksi database gagal");
+    }
+    
+    $userId = $_SESSION['user_id'];
+    $notification = new Notification($conn);
+    
+    // Menandai semua sebagai sudah dibaca
+    if (isset($_GET['action']) && $_GET['action'] === 'mark_all_read') {
+        $notification->markAllAsRead($userId);
+        $_SESSION['flash_message'] = "Semua notifikasi telah ditandai sebagai dibaca.";
+        $_SESSION['flash_type'] = "green";
+        header("Location: " . USER_URL . "notifikasi.php");
+        exit;
+    }
+    
+    // Menandai satu notifikasi sebagai sudah dibaca
+    if (isset($_GET['id']) && is_numeric($_GET['id'])) {
+        $notificationId = (int)$_GET['id'];
+        $notification->markAsRead($notificationId, $userId);
+    }
+    
+    // Hapus notifikasi
+    if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+        $notificationId = (int)$_GET['delete'];
+        if ($notification->deleteNotification($notificationId, $userId)) {
+            $_SESSION['flash_message'] = "Notifikasi berhasil dihapus.";
+            $_SESSION['flash_type'] = "green";
+        } else {
+            $_SESSION['flash_message'] = "Gagal menghapus notifikasi.";
+            $_SESSION['flash_type'] = "red";
+        }
+        header("Location: " . USER_URL . "notifikasi.php");
+        exit;
+    }
+    
+    // Pagination
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
+    
+    // Ambil daftar notifikasi
+    $notifications = $notification->getUserNotifications($userId, $limit, $offset);
+    
+    // Hitung total notifikasi untuk pagination
+    try {
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM notifikasi WHERE user_id = :user_id");
+        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $totalNotifications = $stmt->fetchColumn();
+        $totalPages = ceil($totalNotifications / $limit);
+    } catch (PDOException $e) {
+        error_log("Error counting notifications: " . $e->getMessage());
+        $totalNotifications = 0;
+        $totalPages = 1;
+    }
+
+} catch (Exception $e) {
+    error_log("Notification page error: " . $e->getMessage());
+    $_SESSION['flash_message'] = "Terjadi kesalahan saat memuat notifikasi. Silakan coba lagi nanti.";
+    $_SESSION['flash_type'] = "red";
+    $notifications = [];
     $totalNotifications = 0;
     $totalPages = 1;
 }

@@ -27,9 +27,10 @@ Sistem ini diimplementasikan menggunakan arsitektur microservices dengan beberap
    - Menangani status pemesanan
 
 4. **Payment Service**
-   - Memproses pembayaran
-   - Verifikasi pembayaran
-   - Riwayat pembayaran
+   - Memproses pembayaran menggunakan Midtrans Payment Gateway
+   - Verifikasi pembayaran melalui callback Midtrans
+   - Riwayat pembayaran dan status transaksi
+   - Mendukung berbagai metode pembayaran (QRIS, VA, e-wallet, kartu kredit)
 
 5. **Review Service**
    - Mengelola ulasan kendaraan
@@ -46,6 +47,7 @@ Sistem ini diimplementasikan menggunakan arsitektur microservices dengan beberap
 - **Consul** - Untuk service discovery
 - **Prometheus & Grafana** - Untuk monitoring
 - **Docker** - Untuk kontainerisasi
+- **Midtrans** - Sebagai payment gateway
 
 ## Teknologi yang Digunakan
 
@@ -129,8 +131,10 @@ Sistem ini diimplementasikan menggunakan arsitektur microservices dengan beberap
 #### Payment Service
 - `GET /api/payments` - Mendapatkan semua payment (admin only)
 - `GET /api/payments/booking/{bookingId}` - Mendapatkan payment untuk booking
-- `POST /api/payments` - Memproses pembayaran
-- `GET /api/payments/verify/{paymentId}` - Memverifikasi payment
+- `POST /api/payments/create` - Membuat transaksi pembayaran dengan Midtrans
+- `GET /api/payments/status/{orderId}` - Mendapatkan status pembayaran
+- `POST /api/payments/notification` - Endpoint callback untuk notifikasi Midtrans
+- `GET /api/payments/methods` - Mendapatkan daftar metode pembayaran yang tersedia
 
 #### Review Service
 - `GET /api/reviews/vehicle/{vehicleId}` - Mendapatkan reviews kendaraan
@@ -159,19 +163,3 @@ Sistem ini diimplementasikan menggunakan arsitektur microservices dengan beberap
 ## Pengaturan Cron Job untuk Notifikasi
 
 Untuk mengirim notifikasi pengingat pengembalian mobil secara otomatis, tambahkan cron job berikut:
-
-```bash
-# Menjalankan setiap hari pada jam 8 pagi
-0 8 * * * php /path/to/admin/send_return_reminder.php
-```
-
-Pastikan untuk mengganti `/path/to/` dengan path absolut ke direktori aplikasi.
-
-## Login Admin Default
-
-- Username: admin
-- Password: admin123
-
-## Kontribusi
-
-Kontribusi, masukan, dan saran sangat diterima. Silakan buat issue atau pull request. 
