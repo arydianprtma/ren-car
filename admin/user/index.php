@@ -9,6 +9,48 @@ require_once '../includes/header.php';
 $db = new Database();
 $conn = $db->getConnection();
 
+// Tambahkan di awal file PHP
+if (isset($_POST['delete_user']) && isset($_POST['user_id'])) {
+    $userId = (int)$_POST['user_id'];
+    
+    try {
+        // Cek apakah user yang akan dihapus adalah admin
+        $checkAdminStmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+        $checkAdminStmt->execute([$userId]);
+        $userRole = $checkAdminStmt->fetchColumn();
+        
+        if ($userRole === 'admin') {
+            // Jangan izinkan menghapus admin
+            setFlashMessage("Tidak dapat menghapus akun admin.", "red");
+            header("Location: " . ADMIN_URL . "user/index.php");
+            exit;
+        }
+        
+        // Cek apakah ada pemesanan terkait user ini
+        $checkStmt = $conn->prepare("SELECT COUNT(*) FROM pemesanan WHERE user_id = ?");
+        $checkStmt->execute([$userId]);
+        $hasOrders = $checkStmt->fetchColumn() > 0;
+        
+        if ($hasOrders) {
+            // User memiliki pemesanan, jangan hapus permanen, update status saja
+            $stmt = $conn->prepare("UPDATE users SET status = 'nonaktif' WHERE id = ?");
+            $stmt->execute([$userId]);
+            setFlashMessage("User tidak dapat dihapus karena memiliki riwayat pemesanan. Status user telah diubah menjadi nonaktif.", "yellow");
+        } else {
+            // User tidak memiliki pemesanan, bisa dihapus permanen
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            setFlashMessage("User berhasil dihapus.", "green");
+        }
+        
+        // Redirect kembali ke halaman daftar user
+        header("Location: " . ADMIN_URL . "user/index.php");
+        exit;
+    } catch (PDOException $e) {
+        setFlashMessage("Terjadi kesalahan: " . $e->getMessage(), "red");
+    }
+}
+
 // Ambil parameter pencarian & filter
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
@@ -59,37 +101,29 @@ $totalPages = ceil($totalItems / $limit);
 </div>
 
 <!-- Filter dan Pencarian -->
-<div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-    <form action="" method="GET" class="flex flex-wrap items-center gap-4">
-        <div class="flex-1 min-w-[200px]">
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+    <form action="" method="GET" class="flex flex-wrap items-end gap-4">
+        <div class="w-full md:w-1/3">
             <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari User</label>
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fas fa-search text-gray-400"></i>
-                </div>
-                <input type="text" id="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Nama, username, email..." class="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-600 focus:ring focus:ring-primary-200 focus:ring-opacity-50">
-            </div>
+            <input type="text" id="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Nama, username, email, no. telp, KTP..." class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
         </div>
         
-        <div class="w-48">
+        <div class="w-full md:w-1/4">
             <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select id="status" name="status" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-600 focus:ring focus:ring-primary-200 focus:ring-opacity-50">
+            <select id="status" name="status" class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 <option value="">Semua Status</option>
                 <option value="aktif" <?= $status === 'aktif' ? 'selected' : '' ?>>Aktif</option>
                 <option value="nonaktif" <?= $status === 'nonaktif' ? 'selected' : '' ?>>Nonaktif</option>
             </select>
         </div>
         
-        <div class="flex items-end">
-            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition duration-200">
-                <i class="fas fa-search mr-2"></i> Cari
+        <div class="flex items-center space-x-2">
+            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded-lg shadow-sm transition duration-200 flex items-center">
+                <i class="fas fa-search mr-2"></i> Filter
             </button>
-            
-            <?php if (!empty($search) || !empty($status)): ?>
-                <a href="<?= ADMIN_URL ?>user/index.php" class="ml-2 text-primary-600 hover:text-primary-800">
-                    <i class="fas fa-times-circle"></i> Reset
-                </a>
-            <?php endif; ?>
+            <a href="<?= ADMIN_URL ?>user/index.php" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg shadow-sm transition duration-200 flex items-center">
+                <i class="fas fa-sync-alt mr-2"></i> Reset
+            </a>
         </div>
     </form>
 </div>
@@ -164,6 +198,11 @@ $totalPages = ceil($totalItems / $limit);
                                 <a href="<?= ADMIN_URL ?>user/detail.php?id=<?= $user['id'] ?>" class="text-primary-600 hover:text-primary-900 mr-3">
                                     <i class="fas fa-eye"></i> Detail
                                 </a>
+                                <?php if (($user['role'] ?? '') !== 'admin'): ?>
+                                <a href="#" onclick="confirmDelete(<?= $user['id'] ?>, '<?= htmlspecialchars($user['nama']) ?>')" class="text-red-600 hover:text-red-900">
+                                    <i class="fas fa-trash-alt"></i> Hapus
+                                </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -221,5 +260,57 @@ $totalPages = ceil($totalItems / $limit);
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Modal Konfirmasi Hapus -->
+<div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+        <div class="mb-4 text-center">
+            <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-3"></i>
+            <h3 class="text-lg font-bold text-gray-800">Konfirmasi Hapus</h3>
+            <p class="text-gray-600" id="deleteConfirmationText">Apakah Anda yakin ingin menghapus user ini?</p>
+            <div class="mt-2 text-sm text-gray-500">
+                <p>Jika user memiliki riwayat pemesanan, user akan dinonaktifkan dan tidak dihapus permanen.</p>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button id="cancelDelete" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg transition duration-200">
+                Batal
+            </button>
+            <form id="deleteForm" method="POST" class="inline">
+                <input type="hidden" name="user_id" id="deleteUserId">
+                <input type="hidden" name="delete_user" value="1">
+                <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200">
+                    Hapus
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(userId, userName) {
+    // Set ID user pada form
+    document.getElementById('deleteUserId').value = userId;
+    
+    // Set pesan konfirmasi
+    document.getElementById('deleteConfirmationText').textContent = 
+        `Apakah Anda yakin ingin menghapus user "${userName}"?`;
+    
+    // Tampilkan modal
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+// Tutup modal saat tombol batal diklik
+document.getElementById('cancelDelete').addEventListener('click', function() {
+    document.getElementById('deleteModal').classList.add('hidden');
+});
+
+// Tutup modal saat user mengklik di luar modal
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.add('hidden');
+    }
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?> 

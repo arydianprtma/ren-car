@@ -442,7 +442,6 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
             <!-- Footer sidebar -->
             <div class="mt-8 px-4 py-6 text-center text-xs text-gray-400">
                 <p>Rental Mobil &copy; <?= date('Y') ?></p>
-                <p class="mt-1">Developed with <i class="fas fa-heart text-red-500"></i></p>
             </div>
         </nav>
     </aside>
