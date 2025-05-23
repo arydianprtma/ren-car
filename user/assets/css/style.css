@@ -1,0 +1,53 @@
+/* Dropdown Menu Override Styling */
+.dropdown-menu {
+    display: none !important;
+    opacity: 0 !important;
+    transform: translateY(-10px) !important;
+    transition: opacity 0.3s, transform 0.3s !important;
+    visibility: hidden !important;
+}
+
+.dropdown-menu:not(.hidden) {
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+    visibility: visible !important;
+    z-index: 50 !important;
+}
+
+/* Pastikan dropdown item memiliki hover yang bekerja */
+.dropdown-menu a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.dropdown-menu a:hover {
+    background-color: #3b82f6 !important; /* bg-blue-500 */
+    color: white !important;
+}
+
+/* Posisi dropdown absolut */
+.dropdown {
+    position: relative !important;
+}
+
+/* Custom link styles */
+.user-dropdown-link {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem; /* text-sm */
+    color: #374151; /* text-gray-700 */
+    transition: all 0.2s;
+}
+
+.user-dropdown-link:hover {
+    background-color: #3b82f6; /* bg-blue-500 */
+    color: white;
+}
+
+.user-dropdown-link .icon {
+    margin-right: 0.5rem;
+} 

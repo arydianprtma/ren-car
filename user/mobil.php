@@ -123,9 +123,9 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- Filter Section -->
 <section class="bg-white py-8 shadow-md relative -mt-8 rounded-t-3xl">
-    <div class="container mx-auto px-6">
-        <form action="mobil.php" method="GET" class="bg-white rounded-xl shadow-lg p-6">
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+    <div class="container mx-auto px-4">
+        <form action="mobil.php" method="GET" class="bg-white rounded-xl shadow-lg p-4 md:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                 <div>
                     <label for="kategori" class="block text-gray-700 text-sm font-medium mb-2">Kategori</label>
                     <select id="kategori" name="kategori" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
@@ -151,19 +151,26 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <input type="date" id="tanggal_selesai" name="tanggal_selesai" value="<?= $tanggal_selesai ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
                 </div>
                 
-                <div>
+                <div class="flex flex-col">
                     <label for="urutkan" class="block text-gray-700 text-sm font-medium mb-2">Urutkan</label>
-                    <div class="flex items-end h-[40px]">
+                    <div class="flex items-center h-[40px] w-full">
                         <select id="urutkan" name="urutkan" class="w-full px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                             <option value="terbaru" <?= ($urutkan == 'terbaru') ? 'selected' : '' ?>>Terbaru</option>
                             <option value="harga_terendah" <?= ($urutkan == 'harga_terendah') ? 'selected' : '' ?>>Harga Terendah</option>
                             <option value="harga_tertinggi" <?= ($urutkan == 'harga_tertinggi') ? 'selected' : '' ?>>Harga Tertinggi</option>
                         </select>
-                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all">
+                        <button type="submit" class="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Tombol Filter untuk Mobile -->
+            <div class="mt-4 md:hidden">
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all flex items-center justify-center">
+                    <i class="fas fa-filter mr-2"></i> Terapkan Filter
+                </button>
             </div>
         </form>
     </div>
@@ -171,14 +178,14 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- Mobil List -->
 <section class="py-12 bg-gray-50">
-    <div class="container mx-auto px-6">
+    <div class="container mx-auto px-4">
         <?php if (!empty($mobilList)): ?>
             <!-- Hasil Pencarian Mobil (awalnya tersembunyi) -->
             <div id="mobil-list-content" class="hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($mobilList as $mobil): ?>
-                        <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 group hover-scale">
-                            <div class="h-60 bg-gray-200 relative overflow-hidden">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 group hover-scale h-full flex flex-col">
+                            <div class="h-48 sm:h-60 bg-gray-200 relative overflow-hidden">
                                 <?php if (!empty($mobil['foto_mobil'])): ?>
                                     <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                                 <?php else: ?>
@@ -238,20 +245,20 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 }
                                 ?>
                             </div>
-                            <div class="p-6">
-                                <h3 class="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h3>
+                            <div class="p-4 sm:p-6 flex-1 flex flex-col">
+                                <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-2 sm:mb-3 group-hover:text-blue-600 transition-colors"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h3>
                                 
-                                <div class="flex flex-wrap items-center text-gray-600 text-sm mb-4 gap-3">
-                                    <span class="inline-flex items-center"><i class="fas fa-car mr-2 text-blue-500"></i> <?= $mobil['tahun_produksi'] ?></span>
-                                    <span class="inline-flex items-center"><i class="fas fa-user mr-2 text-blue-500"></i> <?= $mobil['kapasitas'] ?> Orang</span>
-                                    <span class="inline-flex items-center"><i class="fas fa-gear mr-2 text-blue-500"></i> <?= ucfirst($mobil['transmisi']) ?></span>
-                                    <span class="inline-flex items-center"><i class="fas fa-gas-pump mr-2 text-blue-500"></i> <?= ucfirst($mobil['bahan_bakar']) ?></span>
+                                <div class="flex flex-wrap items-center text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4 gap-2 sm:gap-3">
+                                    <span class="inline-flex items-center"><i class="fas fa-car mr-1 sm:mr-2 text-blue-500"></i> <?= $mobil['tahun_produksi'] ?></span>
+                                    <span class="inline-flex items-center"><i class="fas fa-user mr-1 sm:mr-2 text-blue-500"></i> <?= $mobil['kapasitas'] ?> Orang</span>
+                                    <span class="inline-flex items-center"><i class="fas fa-gear mr-1 sm:mr-2 text-blue-500"></i> <?= ucfirst($mobil['transmisi']) ?></span>
+                                    <span class="inline-flex items-center"><i class="fas fa-gas-pump mr-1 sm:mr-2 text-blue-500"></i> <?= ucfirst($mobil['bahan_bakar']) ?></span>
                                 </div>
                                 
                                 <?php if (!empty($mobil['fitur'])): ?>
-                                    <div class="mb-4">
-                                        <h4 class="text-sm font-medium text-gray-700 mb-2">Fitur Tersedia:</h4>
-                                        <div class="flex flex-wrap gap-2">
+                                    <div class="mb-3 sm:mb-4">
+                                        <h4 class="text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Fitur Tersedia:</h4>
+                                        <div class="flex flex-wrap gap-1 sm:gap-2">
                                             <?php 
                                             $fiturJson = json_decode($mobil['fitur'], true);
                                             $fiturMapping = [
@@ -296,13 +303,13 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                 <?php endif; ?>
                                 
-                                <div class="flex justify-between items-center pt-3 border-t border-gray-100">
-                                    <div class="text-blue-600 font-bold text-lg">
-                                        Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?> <span class="text-sm text-gray-500 font-normal">/ Hari</span>
+                                <div class="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center">
+                                    <div class="text-blue-600 font-bold text-base sm:text-lg">
+                                        Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?> <span class="text-xs sm:text-sm text-gray-500 font-normal">/ Hari</span>
                                     </div>
                                     
-                                    <div class="flex space-x-2">
-                                        <a href="detail-mobil.php?id=<?= $mobil['id'] ?><?= (!empty($tanggal_mulai) && !empty($tanggal_selesai)) ? '&tanggal_mulai=' . $tanggal_mulai . '&tanggal_selesai=' . $tanggal_selesai : '' ?>" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center">
+                                    <div>
+                                        <a href="detail-mobil.php?id=<?= $mobil['id'] ?><?= (!empty($tanggal_mulai) && !empty($tanggal_selesai)) ? '&tanggal_mulai=' . $tanggal_mulai . '&tanggal_selesai=' . $tanggal_selesai : '' ?>" class="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center">
                                             <i class="fas fa-info-circle mr-1"></i> Detail
                                         </a>
                                     </div>
@@ -314,20 +321,22 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             
             <!-- Skeleton Loader -->
-            <div id="skeleton-loader-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <?php for ($i = 0; $i < count($mobilList); $i++): ?>
+            <div id="skeleton-loader-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <?php for ($i = 0; $i < min(count($mobilList), 6); $i++): ?>
                     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                        <div class="h-60 bg-gray-200 relative overflow-hidden skeleton-shimmer"></div>
-                        <div class="p-6">
-                            <div class="h-7 bg-gray-200 rounded-md w-3/4 mb-3 skeleton-shimmer"></div>
-                            <div class="flex items-center space-x-4 mb-4">
+                        <div class="h-48 sm:h-60 bg-gray-200 relative overflow-hidden skeleton-shimmer"></div>
+                        <div class="p-4 sm:p-6">
+                            <div class="h-6 bg-gray-200 rounded-md w-3/4 mb-3 skeleton-shimmer"></div>
+                            <div class="flex flex-wrap gap-2 mb-3">
                                 <div class="h-5 bg-gray-200 rounded-md w-16 skeleton-shimmer"></div>
                                 <div class="h-5 bg-gray-200 rounded-md w-20 skeleton-shimmer"></div>
                                 <div class="h-5 bg-gray-200 rounded-md w-16 skeleton-shimmer"></div>
                             </div>
+                            <div class="h-4 bg-gray-200 rounded-md w-full mb-2 skeleton-shimmer"></div>
+                            <div class="h-4 bg-gray-200 rounded-md w-5/6 mb-2 skeleton-shimmer"></div>
                             <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                                <div class="h-7 bg-gray-200 rounded-md w-28 skeleton-shimmer"></div>
-                                <div class="h-9 bg-gray-200 rounded-lg w-20 skeleton-shimmer"></div>
+                                <div class="h-6 bg-gray-200 rounded-md w-28 skeleton-shimmer"></div>
+                                <div class="h-8 bg-gray-200 rounded-lg w-20 skeleton-shimmer"></div>
                             </div>
                         </div>
                     </div>
@@ -335,13 +344,13 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         <?php else: ?>
             <!-- Pesan Mobil Tidak Ditemukan -->
-            <div class="flex flex-col items-center justify-center py-16 bg-white rounded-xl shadow-sm animate-fadeIn mb-12">
-                <div class="w-32 h-32 mb-6 text-gray-300">
-                    <i class="fas fa-car-side text-8xl animate-pulse text-blue-200"></i>
+            <div class="flex flex-col items-center justify-center py-12 sm:py-16 bg-white rounded-xl shadow-sm animate-fadeIn mb-6 sm:mb-12 px-4">
+                <div class="w-24 sm:w-32 h-24 sm:h-32 mb-4 sm:mb-6 text-gray-300">
+                    <i class="fas fa-car-side text-7xl sm:text-8xl animate-pulse text-blue-200"></i>
                 </div>
-                <h3 class="text-xl font-medium text-gray-700 mb-2">Mobil Tidak Ditemukan</h3>
-                <p class="text-gray-500 text-center max-w-md mb-6">Tidak ada mobil yang sesuai dengan kriteria pencarian Anda.</p>
-                <a href="mobil.php" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-all flex items-center">
+                <h3 class="text-lg sm:text-xl font-medium text-gray-700 mb-2">Mobil Tidak Ditemukan</h3>
+                <p class="text-gray-500 text-center max-w-md mb-4 sm:mb-6">Tidak ada mobil yang sesuai dengan kriteria pencarian Anda.</p>
+                <a href="mobil.php" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 sm:px-6 rounded-lg transition-all flex items-center text-sm sm:text-base">
                     <i class="fas fa-sync-alt mr-2"></i> Reset Pencarian
                 </a>
             </div>

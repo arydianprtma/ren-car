@@ -160,6 +160,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
             $notification = new Notification($conn);
             $notification->sendPaymentReminder($pemesanan_id);
             
+            // Kirim notifikasi pemesanan baru ke admin
+            $user_stmt = $conn->prepare("SELECT nama FROM users WHERE id = ?");
+            $user_stmt->execute([$user_id]);
+            $user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+            $customer_name = $user_data['nama'] ?? 'Pelanggan';
+            
+            $notification->sendNewOrderNotification($pemesanan_id, $customer_name);
+            
             // Commit transaksi
             $conn->commit();
             
@@ -182,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
 
 <!-- Breadcrumb -->
 <div class="bg-gray-100 py-3">
-    <div class="container mx-auto px-6">
+    <div class="container mx-auto px-4">
         <div class="flex text-sm">
             <a href="<?= USER_URL ?>" class="text-blue-600 hover:text-blue-800">Beranda</a>
             <span class="mx-2 text-gray-500">/</span>
@@ -194,12 +202,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
 </div>
 
 <!-- Detail Mobil Section -->
-<section class="py-12 bg-white">
-    <div class="container mx-auto px-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+<section class="py-8 sm:py-12 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
             <!-- Gambar Mobil -->
             <div>
-                <div class="bg-gray-100 rounded-xl overflow-hidden shadow-lg h-80 mb-6">
+                <div class="bg-gray-100 rounded-xl overflow-hidden shadow-lg h-64 sm:h-80 mb-6">
                     <?php if (!empty($mobil['foto_mobil'])): ?>
                         <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover">
                     <?php else: ?>
@@ -211,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                 </div>
                 
                 <!-- Fitur Mobil -->
-                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-list-check mr-2 text-blue-600"></i> Fitur Mobil
                     </h3>
@@ -220,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                             <i class="fas fa-info-circle mr-2"></i> Informasi fitur mobil tidak tersedia
                         </div>
                     <?php else: ?>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                             <?php foreach ($fiturMobil as $fitur => $tersedia): ?>
                                 <div class="flex items-center <?= $tersedia ? 'text-gray-800' : 'text-gray-400' ?>">
                                     <?php if ($tersedia): ?>
@@ -238,39 +246,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
             
             <!-- Detail dan Form Pemesanan -->
             <div>
-                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 mb-6">
+                <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 mb-6">
                     <span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full mb-2">
                         <?= $mobil['nama_kategori'] ?? 'Uncategorized' ?>
                     </span>
                     
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h1>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h1>
                     
-                    <div class="flex items-center mb-4">
-                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <div class="flex flex-wrap items-center gap-2 mb-4">
+                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
                             <?= ucfirst($mobil['status']) ?>
                         </div>
-                        <div class="mx-2 text-gray-400">|</div>
-                        <div class="text-gray-600 text-sm">
+                        <div class="text-gray-600 text-xs sm:text-sm">
                             Plat Nomor: <span class="font-semibold"><?= $mobil['nomor_plat'] ?></span>
                         </div>
                     </div>
                     
                     <div class="border-t border-gray-100 my-4 pt-4">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                             <div>
-                                <p class="text-sm text-gray-500">Tahun</p>
+                                <p class="text-xs sm:text-sm text-gray-500">Tahun</p>
                                 <p class="font-semibold"><?= $mobil['tahun_produksi'] ?></p>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Transmisi</p>
+                                <p class="text-xs sm:text-sm text-gray-500">Transmisi</p>
                                 <p class="font-semibold"><?= ucfirst($mobil['transmisi']) ?></p>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Kapasitas</p>
+                                <p class="text-xs sm:text-sm text-gray-500">Kapasitas</p>
                                 <p class="font-semibold"><?= $mobil['kapasitas'] ?> Orang</p>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Bahan Bakar</p>
+                                <p class="text-xs sm:text-sm text-gray-500">Bahan Bakar</p>
                                 <p class="font-semibold"><?= ucfirst($mobil['bahan_bakar']) ?></p>
                             </div>
                         </div>
@@ -278,21 +285,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                         <?php if (!empty($mobil['deskripsi'])): ?>
                             <div class="border-t border-gray-100 my-4 pt-4">
                                 <h3 class="text-lg font-semibold text-gray-800 mb-2">Deskripsi</h3>
-                                <p class="text-gray-600"><?= nl2br(htmlspecialchars($mobil['deskripsi'])) ?></p>
+                                <p class="text-gray-600 text-sm sm:text-base"><?= nl2br(htmlspecialchars($mobil['deskripsi'])) ?></p>
                             </div>
                         <?php endif; ?>
                         
                         <div class="bg-blue-50 p-4 rounded-lg text-center my-4">
-                            <p class="text-gray-700 mb-1">Harga Sewa</p>
-                            <p class="text-2xl font-bold text-blue-600">
-                                Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?> <span class="text-sm font-normal text-gray-500">/ hari</span>
+                            <p class="text-gray-700 mb-1 text-sm">Harga Sewa</p>
+                            <p class="text-xl sm:text-2xl font-bold text-blue-600">
+                                Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?> <span class="text-xs sm:text-sm font-normal text-gray-500">/ hari</span>
                             </p>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Form Pemesanan -->
-                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-calendar-alt mr-2 text-blue-600"></i> Form Pemesanan
                     </h3>
@@ -305,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                         <?php endif; ?>
                         
                         <form action="" method="POST">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label for="tanggal_mulai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai <span class="text-red-600">*</span></label>
                                     <input type="date" id="tanggal_mulai" name="tanggal_mulai" value="<?= $tanggal_mulai ?>" min="<?= date('Y-m-d') ?>" class="w-full px-3 py-2 border <?= isset($errors['tanggal_mulai']) ? 'border-red-500' : 'border-gray-300' ?> rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" required>
@@ -350,8 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                                 </div>
                             </div>
                             
-                            <div class="flex justify-end">
-                                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all flex items-center">
+                            <div class="flex justify-center sm:justify-end">
+                                <button type="submit" class="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center font-medium">
                                     <i class="fas fa-shopping-cart mr-2"></i> Pesan Sekarang
                                 </button>
                             </div>
@@ -371,11 +378,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
 </section>
 
 <!-- Mobil Terkait Section -->
-<section class="py-12 bg-gray-50">
-    <div class="container mx-auto px-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Mobil Terkait</h2>
+<section class="py-8 sm:py-12 bg-gray-50">
+    <div class="container mx-auto px-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-6">Mobil Terkait</h2>
         
-        <div id="related-cars" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div id="related-cars" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <!-- Skeleton loader (akan diganti dengan mobil terkait) -->
             <?php for($i = 0; $i < 3; $i++): ?>
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden skeleton-shimmer">

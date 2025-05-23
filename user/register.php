@@ -133,6 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindParam(':foto_ktp', $foto_ktp);
                 
                 if ($stmt->execute()) {
+                    // Dapatkan ID user baru
+                    $newUserId = $conn->lastInsertId();
+                    
+                    // Kirim notifikasi ke admin
+                    require_once '../classes/Notification.php';
+                    $notification = new Notification($conn);
+                    $notification->sendNewUserNotification($newUserId, $nama, $email);
+                    
                     $_SESSION['flash_message'] = 'Registrasi berhasil! Silakan login.';
                     $_SESSION['flash_type'] = 'green';
                     redirect(USER_URL . 'login.php');

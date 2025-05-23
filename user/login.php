@@ -89,10 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        html, body {
-            height: 100%;
-            overflow: hidden;
-        }
         .login-container {
             background-color: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -114,16 +110,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(37, 99, 235, 0.4);
         }
-        .main-container {
-            height: 100vh;
+        
+        /* Responsivitas untuk mobile */
+        @media (max-width: 640px) {
+            .main-container {
+                padding: 1rem;
+                height: auto;
+                min-height: 100vh;
+            }
+            .login-container {
+                padding: 1.5rem;
+            }
+        }
+        
+        /* Fix untuk iOS */
+        @supports (-webkit-touch-callout: none) {
+            .main-container {
+                min-height: -webkit-fill-available;
+            }
         }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-blue-100">
-    <div class="flex items-center justify-center h-full main-container px-4 sm:px-6 lg:px-8">
-        <div class="flex w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl">
+    <div class="flex items-center justify-center min-h-screen main-container px-4 py-10 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl">
             <!-- Image Section -->
-            <div class="hidden lg:block lg:w-1/2 bg-cover bg-center login-image" style="background-image: url('<?= ASSETS_URL ?>images/car-login.jpg')">
+            <div class="hidden md:block md:w-1/2 bg-cover bg-center login-image" style="background-image: url('<?= ASSETS_URL ?>images/car-login.jpg')">
                 <div class="flex h-full items-center justify-center p-8">
                     <div class="text-center">
                         <h1 class="text-3xl font-bold text-white mb-4">Rental Mobil Terbaik</h1>
@@ -146,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <!-- Form Section -->
-            <div class="w-full lg:w-1/2 bg-white p-6 md:p-8 login-container">
+            <div class="w-full md:w-1/2 bg-white p-6 md:p-8 login-container">
                 <div class="mb-6 text-center">
                     <a href="<?= BASE_URL ?>" class="flex justify-center items-center mb-4">
                         <i class="fas fa-car-side text-blue-600 text-3xl mr-2"></i>

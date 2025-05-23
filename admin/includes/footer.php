@@ -14,29 +14,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        // Sidebar toggle
-        document.getElementById('sidebar-toggle').addEventListener('click', function() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            
-            sidebar.classList.toggle('-translate-x-full');
-            
-            if (sidebar.classList.contains('-translate-x-full')) {
-                overlay.classList.add('hidden');
-            } else {
-                overlay.classList.remove('hidden');
-            }
-        });
-        
-        // Overlay click untuk menutup sidebar
-        document.getElementById('sidebar-overlay').addEventListener('click', function() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            
-            sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
-        });
-        
         // Auto-hide flash messages after 3 seconds
         setTimeout(function() {
             const alert = document.querySelector('[role="alert"]');
@@ -56,6 +33,26 @@
                 const alert = button.closest('[role="alert"]');
                 alert.style.display = 'none';
             });
+        });
+
+        // Custom scripts untuk admin
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animasi untuk kartu statistik
+            const statsCards = document.querySelectorAll('.stats-card');
+            if (statsCards.length > 0) {
+                statsCards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(10px)';
+                        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        
+                        setTimeout(() => {
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        }, 100 + (index * 100));
+                    }, 0);
+                });
+            }
         });
     </script>
 </body>

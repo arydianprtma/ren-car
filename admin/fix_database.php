@@ -2,17 +2,14 @@
 /**
  * Script perbaikan database untuk status_pemesanan kosong
  */
-require_once 'includes/config.php';
-require_once 'includes/database.php';
+// Gunakan path relatif yang benar untuk file-file yang dibutuhkan
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../config/database.php';
 require_once 'includes/auth_check.php';
 
 // Hanya admin yang boleh mengakses halaman ini
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    $_SESSION['flash_message'] = "Akses ditolak. Anda tidak berhak mengakses halaman ini.";
-    $_SESSION['flash_type'] = "red";
-    header("Location: " . ADMIN_URL . "index.php");
-    exit;
-}
+// Karena sudah ada auth_check.php, tidak perlu pengecekan tambahan
+// Auth_check.php sudah memastikan bahwa pengguna adalah admin melalui isAdminLoggedIn()
 
 // Inisialisasi koneksi database
 $db = new Database();
