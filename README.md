@@ -318,13 +318,11 @@ Sistem Rental Mobil berhasil mengimplementasikan konsep sistem terdistribusi mel
   <tr>
     <td align="center">
       <a href="https://github.com/arydianprtma">
-        <img src="https://github.com/username.png" width="100px;" alt=""/><br>
         <sub><b>Nama Developer 1</b></sub>
       </a>
     </td>
     <td align="center">
       <a href="https://github.com/username2">
-        <img src="https://github.com/username2.png" width="100px;" alt=""/><br>
         <sub><b>Nama Developer 2</b></sub>
       </a>
     </td>
