@@ -103,9 +103,6 @@ Aplikasi ini menyediakan dua akses utama:
 
 ## 🔄 Implementasi Sistem Terdistribusi
 
-<p align="center">
-  <img src="docs/images/architecture.png" alt="Arsitektur Sistem" width="800">
-</p>
 
 Sistem Rental Mobil mengimplementasikan konsep sistem terdistribusi melalui **integrasi Payment Gateway Midtrans**. Berikut adalah detail implementasinya:
 
@@ -320,7 +317,7 @@ Sistem Rental Mobil berhasil mengimplementasikan konsep sistem terdistribusi mel
 <table>
   <tr>
     <td align="center">
-      <a href="https://github.com/username">
+      <a href="https://github.com/arydianprtma">
         <img src="https://github.com/username.png" width="100px;" alt=""/><br>
         <sub><b>Nama Developer 1</b></sub>
       </a>
