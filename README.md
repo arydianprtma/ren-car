@@ -1,4 +1,16 @@
-# Dokumentasi Sistem Rental Mobil
+# 🚗 Sistem Rental Mobil
+
+![PHP](https://img.shields.io/badge/PHP-7.4+-777BB4?style=for-the-badge&logo=php&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Development-yellow?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+
+> 🌟 Sistem manajemen rental mobil modern dengan integrasi pembayaran Midtrans
+
+<p align="center">
+  <img src="docs/images/preview.png" alt="Preview Sistem" width="600">
+</p>
 
 ## Deskripsi Sistem
 
@@ -29,39 +41,32 @@ Aplikasi ini menyediakan dua akses utama:
 - **Riwayat Pemesanan**: Lihat dan kelola riwayat pemesanan
 - **Profil User**: Edit informasi pribadi dan kata sandi
 
-## Teknologi yang Digunakan
+## 🛠️ Teknologi yang Digunakan
 
-- **Backend**: PHP 7.4+ (Native)
-- **Database**: MySQL/MariaDB
-- **Frontend**: HTML, JavaScript, Tailwind CSS
-- **Payment Gateway**: Midtrans (Distribusi sistem pembayaran)
-- **PDF Generation**: mPDF
-- **Chart/Visualisasi**: Chart.js
-- **Icon**: Font Awesome
-- **Deployment**: Server lokal (Laragon/XAMPP)
-
-## Struktur Database
-
-Berikut adalah tabel utama dalam database:
-
-1. **users**: Data pengguna (admin dan pelanggan)
-2. **mobil**: Data mobil yang tersedia untuk disewa
-3. **kategori**: Kategori mobil (SUV, Sedan, dll)
-4. **pemesanan**: Data pemesanan mobil termasuk kolom integrasi Midtrans
-5. **pembayaran**: Data pembayaran untuk pemesanan
-6. **midtrans_notification**: Log notifikasi dari Midtrans payment gateway
-7. **notifikasi**: Notifikasi sistem
+<table>
+  <tr>
+    <td align="center"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/php/php-original.svg" width="40" height="40"/><br>PHP 7.4+</td>
+    <td align="center"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mysql/mysql-original-wordmark.svg" width="40" height="40"/><br>MySQL</td>
+    <td align="center"><img src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" width="40" height="40"/><br>Tailwind CSS</td>
+    <td align="center"><img src="https://www.vectorlogo.zone/logos/midtrans/midtrans-icon.svg" width="40" height="40"/><br>Midtrans</td>
+  </tr>
+</table>
 
 ## Cara Instalasi
 
-### Prasyarat
+<details>
+<summary>📋 Prasyarat</summary>
+
 - PHP 7.4 atau lebih tinggi
 - MySQL/MariaDB
 - Composer
 - Web Server (Apache/Nginx)
 - Akun Midtrans (untuk fitur payment gateway)
 
-### Langkah Instalasi
+</details>
+
+<details>
+<summary>⚙️ Langkah Instalasi</summary>
 
 1. **Clone repositori**
    ```
@@ -94,7 +99,13 @@ Berikut adalah tabel utama dalam database:
      - Username: admin
      - Password: admin123
 
-## Implementasi Sistem Terdistribusi: Payment Gateway Midtrans
+</details>
+
+## 🔄 Implementasi Sistem Terdistribusi
+
+<p align="center">
+  <img src="docs/images/architecture.png" alt="Arsitektur Sistem" width="800">
+</p>
 
 Sistem Rental Mobil mengimplementasikan konsep sistem terdistribusi melalui **integrasi Payment Gateway Midtrans**. Berikut adalah detail implementasinya:
 
@@ -105,8 +116,6 @@ Sistem ini mengadopsi pendekatan microservices dalam pemrosesan pembayaran:
 - **Sistem Rental Mobil (Local Server)**: Menangani manajemen mobil, user, dan pemesanan
 - **Midtrans Payment Gateway (External Server)**: Menangani pemrosesan pembayaran dan keamanan transaksi
 - **Komunikasi via API**: Kedua sistem berkomunikasi melalui API endpoints yang terdefinisi dengan jelas
-
-![Arsitektur Sistem](https://example.com/architecture.png)
 
 ### 2. Alur Transaksi Terdistribusi
 
@@ -299,8 +308,39 @@ Dalam menyusun laporan akhir untuk tugas sistem terdistribusi, sebaiknya menyert
 
 Sistem Rental Mobil berhasil mengimplementasikan konsep sistem terdistribusi melalui integrasi payment gateway Midtrans. Integrasi ini mendemonstrasikan beberapa prinsip penting sistem terdistribusi seperti arsitektur microservices, komunikasi asinkron, toleransi kesalahan, dan distributed transaction. Sistem ini tidak hanya memberikan pengalaman pembayaran yang lebih baik untuk pengguna, tetapi juga meningkatkan keamanan dan reliabilitas transaksi dengan mendistribusikan tanggung jawab pemrosesan pembayaran ke penyedia layanan terpercaya.
 
+## 📊 Screenshot
+
+<p align="center">
+  <img src="docs/images/admin-dashboard.png" alt="Admin Dashboard" width="400">
+  <img src="docs/images/booking-page.png" alt="Booking Page" width="400">
+</p>
+
+## 👥 Tim Pengembang
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/username">
+        <img src="https://github.com/username.png" width="100px;" alt=""/><br>
+        <sub><b>Nama Developer 1</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/username2">
+        <img src="https://github.com/username2.png" width="100px;" alt=""/><br>
+        <sub><b>Nama Developer 2</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+## 📝 Lisensi
+
+Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](LICENSE) untuk detailnya.
+
 ---
 
-**Developed by:** [Nama Tim/Pengembang]  
-**Version:** 1.0  
-**Last Updated:** Mei 2025 
+<p align="center">
+  Dibuat dengan ❤️ oleh Tim Pengembang<br>
+  © 2025 Rental Mobil. All rights reserved.
+</p>
