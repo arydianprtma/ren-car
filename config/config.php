@@ -3,6 +3,9 @@
  * Main Configuration File
  */
 
+// Aktifkan output buffering untuk mencegah 'headers already sent' error
+if (ob_get_level() == 0) ob_start();
+
 // Database Configuration
 require_once 'database.php';
 

@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Sisipkan header setelah semua operasi redirect
+// Setelah semua pemrosesan dan redirect selesai, baru include header.php
 require_once '../includes/header.php';
 ?>
 

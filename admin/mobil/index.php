@@ -3,7 +3,6 @@
  * Manajemen Mobil - Admin Panel
  */
 require_once '../includes/auth_check.php';
-require_once '../includes/header.php';
 
 // Inisialisasi koneksi database
 $db = new Database();
@@ -100,6 +99,9 @@ $sql .= " ORDER BY m.id DESC";
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Setelah semua pemrosesan dan redirect selesai, baru include header.php
+require_once '../includes/header.php';
 ?>
 
 <!-- Page Header -->

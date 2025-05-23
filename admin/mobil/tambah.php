@@ -23,6 +23,28 @@ $errors = [];
 $db = new Database();
 $conn = $db->getConnection();
 
+// Definisi fitur-fitur mobil yang tersedia
+$fiturMobil = [
+    'ac' => 'AC',
+    'power_steering' => 'Power Steering',
+    'power_window' => 'Power Window',
+    'central_lock' => 'Central Lock',
+    'audio_system' => 'Audio System',
+    'airbag' => 'Airbag',
+    'seatbelt' => 'Seat Belt',
+    'pewangi' => 'Pewangi Mobil',
+    'bluetooth' => 'Bluetooth Connectivity',
+    'cruise_control' => 'Cruise Control',
+    'parking_sensor' => 'Parking Sensor',
+    'backup_camera' => 'Backup Camera',
+    'child_lock' => 'Child Lock',
+    'fog_lamp' => 'Fog Lamp',
+    'kursi_bayi' => 'Kursi Bayi'
+];
+
+// Default fitur yang dipilih (kosong untuk form tambah)
+$selectedFitur = [];
+
 // Ambil daftar kategori
 try {
     $stmt = $conn->query("SELECT id, nama_kategori FROM kategori_mobil ORDER BY nama_kategori ASC");
@@ -46,6 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $harga_sewa_per_hari = $_POST['harga_sewa_per_hari'] ?? '';
     $status = $_POST['status'] ?? 'tersedia';
     $deskripsi = trim($_POST['deskripsi'] ?? '');
+    
+    // Ambil data fitur mobil yang dipilih
+    $selectedFitur = isset($_POST['fitur_mobil']) ? $_POST['fitur_mobil'] : [];
     
     // Format harga
     $harga_sewa_per_hari = str_replace('.', '', $harga_sewa_per_hari);
@@ -124,13 +149,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Simpan data mobil
             $sql = "INSERT INTO mobil (merk, model, nomor_plat, tahun_produksi, warna, kapasitas, 
-                    transmisi, bahan_bakar, kategori_id, harga_sewa_per_hari, status, deskripsi, foto_mobil, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                    transmisi, bahan_bakar, kategori_id, harga_sewa_per_hari, status, deskripsi, foto_mobil, fitur, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            
+            // Encode fitur sebagai JSON untuk disimpan di database
+            $fiturJson = !empty($selectedFitur) ? json_encode($selectedFitur) : NULL;
             
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 $merk, $model, $nomor_plat, $tahun_produksi, $warna, $kapasitas,
-                $transmisi, $bahan_bakar, $kategori_id, $harga_sewa_per_hari, $status, $deskripsi, $foto_mobil
+                $transmisi, $bahan_bakar, $kategori_id, $harga_sewa_per_hari, $status, $deskripsi, $foto_mobil, $fiturJson
             ]);
             
             // Commit transaksi
@@ -157,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Sisipkan header setelah semua operasi redirect
+// Setelah semua pemrosesan dan redirect selesai, baru include header.php
 require_once '../includes/header.php';
 ?>
 
@@ -323,6 +351,28 @@ require_once '../includes/header.php';
                 </div>
             </div>
             
+            <div class="md:col-span-2 mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Fitur Mobil</h3>
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                    <p class="text-sm text-blue-800"><i class="fas fa-info-circle mr-2"></i> Centang fitur-fitur yang tersedia pada mobil ini. Fitur yang dipilih akan ditampilkan dalam detail mobil untuk penyewa.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <?php foreach ($fiturMobil as $key => $label): ?>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="fitur_<?= $key ?>" name="fitur_mobil[]" value="<?= $key ?>" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" <?= in_array($key, $selectedFitur) ? 'checked' : '' ?>>
+                        <label for="fitur_<?= $key ?>" class="ml-2 text-sm text-gray-700"><?= $label ?></label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            
+            <div class="md:col-span-2 mt-4">
+                <label for="fitur_custom" class="block text-sm font-medium text-gray-700 mb-1">Fitur Tambahan (opsional)</label>
+                <input type="text" id="fitur_custom" name="fitur_custom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Contoh: GPS, Child Seat, dll (pisahkan dengan koma)">
+                <p class="text-xs text-gray-500 mt-1">Masukkan fitur tambahan yang tidak ada dalam daftar di atas. Pisahkan dengan koma untuk beberapa fitur.</p>
+            </div>
+            
             <div class="md:col-span-2">
                 <label for="deskripsi" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
                 <textarea id="deskripsi" name="deskripsi" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" placeholder="Masukkan deskripsi mobil (opsional)"><?= htmlspecialchars($deskripsi) ?></textarea>
@@ -357,6 +407,16 @@ require_once '../includes/header.php';
 document.addEventListener('DOMContentLoaded', function() {
     // Auto focus pada field merk
     document.getElementById('merk').focus();
+    
+    // Form fitur custom handling
+    const fiturCustomInput = document.getElementById('fitur_custom');
+    fiturCustomInput.addEventListener('change', function() {
+        const customFiturs = this.value.split(',').map(item => item.trim()).filter(item => item !== '');
+        if (customFiturs.length > 0) {
+            console.log('Custom fiturs:', customFiturs);
+            // Dapat diproses di sisi server
+        }
+    });
     
     // Format harga sewa
     const hargaInput = document.getElementById('harga_sewa_per_hari');
@@ -400,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Reset form
-    const resetButton = document.querySelector('button[type="reset"]');
+    const resetButton = document.querySelector('button[type=\"reset\"]');
     resetButton.addEventListener('click', function() {
         setTimeout(function() {
             previewContainer.classList.add('hidden');

@@ -198,11 +198,60 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php if (!empty($mobil['foto_mobil'])): ?>
                                     <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                                 <?php else: ?>
-                                    <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="Placeholder" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                    <div class="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4">
+                                        <i class="fas fa-car-side text-5xl text-gray-400 mb-2"></i>
+                                        <p class="text-sm text-gray-500 text-center">Foto mobil tidak tersedia</p>
+                                    </div>
                                 <?php endif; ?>
                                 <div class="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
                                     <?= $mobil['nama_kategori'] ?? 'Uncategorized' ?>
                                 </div>
+                                
+                                <?php 
+                                // Tampilkan badge fitur unggulan jika ada fitur mobil
+                                if (!empty($mobil['fitur'])) {
+                                    $fiturJson = json_decode($mobil['fitur'], true);
+                                    if (!empty($fiturJson)) {
+                                        $fiturMapping = [
+                                            'ac' => ['icon' => 'snowflake', 'label' => 'AC'],
+                                            'power_steering' => ['icon' => 'dharmachakra', 'label' => 'Power Steering'],
+                                            'power_window' => ['icon' => 'window-maximize', 'label' => 'Power Window'],
+                                            'central_lock' => ['icon' => 'lock', 'label' => 'Central Lock'],
+                                            'audio_system' => ['icon' => 'music', 'label' => 'Audio System'],
+                                            'airbag' => ['icon' => 'car-burst', 'label' => 'Airbag'],
+                                            'seatbelt' => ['icon' => 'user-shield', 'label' => 'Seat Belt'],
+                                            'pewangi' => ['icon' => 'spray-can-sparkles', 'label' => 'Pewangi'],
+                                            'bluetooth' => ['icon' => 'bluetooth', 'label' => 'Bluetooth'],
+                                            'cruise_control' => ['icon' => 'tachometer-alt', 'label' => 'Cruise Control'],
+                                            'parking_sensor' => ['icon' => 'parking', 'label' => 'Parking Sensor'],
+                                            'backup_camera' => ['icon' => 'camera', 'label' => 'Backup Camera'],
+                                            'child_lock' => ['icon' => 'child', 'label' => 'Child Lock'],
+                                            'fog_lamp' => ['icon' => 'lightbulb', 'label' => 'Fog Lamp'],
+                                            'kursi_bayi' => ['icon' => 'baby', 'label' => 'Kursi Bayi']
+                                        ];
+                                        
+                                        // Ambil hingga 3 fitur untuk ditampilkan di badge
+                                        $fiturToShow = [];
+                                        $counter = 0;
+                                        
+                                        foreach ($fiturJson as $fiturKey) {
+                                            if (isset($fiturMapping[$fiturKey]) && $counter < 3) {
+                                                $fiturToShow[] = '<i class="fas fa-' . $fiturMapping[$fiturKey]['icon'] . ' mr-1"></i>' . $fiturMapping[$fiturKey]['label'];
+                                                $counter++;
+                                            }
+                                        }
+                                        
+                                        if (!empty($fiturToShow)) {
+                                            echo '<div class="absolute bottom-0 left-0 bg-gradient-to-r from-blue-600 to-blue-400 text-white px-3 py-1 m-3 rounded-full text-xs font-medium shadow-md">';
+                                            echo implode(' · ', $fiturToShow);
+                                            if (count($fiturJson) > 3) {
+                                                echo ' <span class="bg-white/30 rounded-full px-1.5 py-0.5 text-[10px] ml-1">+' . (count($fiturJson) - 3) . '</span>';
+                                            }
+                                            echo '</div>';
+                                        }
+                                    }
+                                }
+                                ?>
                             </div>
                             <div class="p-6">
                                 <h3 class="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors truncate"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h3>

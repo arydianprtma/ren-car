@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS mobil (
     status ENUM('tersedia', 'disewa', 'pemeliharaan') DEFAULT 'tersedia',
     deskripsi TEXT,
     foto_mobil VARCHAR(255),
+    fitur JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (kategori_id) REFERENCES kategori_mobil(id) ON DELETE SET NULL

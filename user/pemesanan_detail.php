@@ -1,5 +1,6 @@
 <?php
-require_once 'includes/header.php';
+// Inisialisasi koneksi database dan session
+require_once '../config/config.php';
 
 // Periksa apakah user sudah login
 if (!isset($_SESSION['user_id'])) {
@@ -188,6 +189,9 @@ function getStatusLabel($status) {
             return '<span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">' . ucfirst(str_replace('_', ' ', $status)) . '</span>';
     }
 }
+
+// Setelah semua proses selesai, baru include header.php
+require_once 'includes/header.php';
 ?>
 
 <!-- Breadcrumb -->
@@ -228,9 +232,12 @@ function getStatusLabel($status) {
                     <!-- Gambar Mobil -->
                     <div class="col-span-1 md:col-span-1 h-48 md:h-60 bg-gray-100 rounded-lg overflow-hidden">
                         <?php if (!empty($pemesanan['foto_mobil'])): ?>
-                            <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $pemesanan['foto_mobil'] ?>" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">
+                            <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $pemesanan['foto_mobil'] ?>" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
                         <?php else: ?>
-                            <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?>" class="w-full h-full object-cover">
+                            <div class="w-full h-full flex flex-col items-center justify-center">
+                                <i class="fas fa-car-side text-5xl text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-500">Foto tidak tersedia</p>
+                            </div>
                         <?php endif; ?>
                     </div>
                     
@@ -238,6 +245,45 @@ function getStatusLabel($status) {
                     <div class="p-6 md:col-span-2">
                         <h2 class="text-xl font-bold text-gray-800 mb-3"><?= $pemesanan['merk'] ?> <?= $pemesanan['model'] ?></h2>
                         <p class="text-gray-600 mb-1">Nomor Plat: <span class="font-medium"><?= $pemesanan['nomor_plat'] ?></span></p>
+                        
+                        <!-- Tampilkan fitur mobil jika tersedia -->
+                        <?php
+                        if (!empty($pemesanan['fitur'])) {
+                            $fiturJson = json_decode($pemesanan['fitur'], true);
+                            if (!empty($fiturJson)) {
+                                echo '<div class="mt-3 mb-4 flex flex-wrap gap-2">';
+                                
+                                $fiturMapping = [
+                                    'ac' => ['label' => 'AC', 'icon' => 'snowflake'],
+                                    'power_steering' => ['label' => 'Power Steering', 'icon' => 'steering-wheel'],
+                                    'power_window' => ['label' => 'Power Window', 'icon' => 'window-maximize'],
+                                    'central_lock' => ['label' => 'Central Lock', 'icon' => 'lock'],
+                                    'audio_system' => ['label' => 'Audio System', 'icon' => 'music'],
+                                    'airbag' => ['label' => 'Airbag', 'icon' => 'car-burst'],
+                                    'seatbelt' => ['label' => 'Seat Belt', 'icon' => 'user-shield'],
+                                    'pewangi' => ['label' => 'Pewangi Mobil', 'icon' => 'spray-can-sparkles'],
+                                    'bluetooth' => ['label' => 'Bluetooth', 'icon' => 'bluetooth'],
+                                    'cruise_control' => ['label' => 'Cruise Control', 'icon' => 'tachometer-alt'],
+                                    'parking_sensor' => ['label' => 'Parking Sensor', 'icon' => 'parking'],
+                                    'backup_camera' => ['label' => 'Backup Camera', 'icon' => 'camera'],
+                                    'child_lock' => ['label' => 'Child Lock', 'icon' => 'child'],
+                                    'fog_lamp' => ['label' => 'Fog Lamp', 'icon' => 'lightbulb'],
+                                    'kursi_bayi' => ['label' => 'Kursi Bayi', 'icon' => 'baby']
+                                ];
+                                
+                                foreach ($fiturJson as $fiturKey) {
+                                    if (isset($fiturMapping[$fiturKey])) {
+                                        echo '<span class="inline-flex items-center bg-blue-50 px-2 py-1 rounded text-xs font-medium text-gray-700 border border-blue-100">';
+                                        echo '<i class="fas fa-' . $fiturMapping[$fiturKey]['icon'] . ' text-blue-500 mr-1"></i> ';
+                                        echo $fiturMapping[$fiturKey]['label'];
+                                        echo '</span>';
+                                    }
+                                }
+                                
+                                echo '</div>';
+                            }
+                        }
+                        ?>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div>

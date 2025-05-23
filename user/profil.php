@@ -194,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Include header
-include_once 'includes/header.php';
+// Include header setelah semua proses header() selesai
+require_once 'includes/header.php';
 ?>
 
 <!-- Profil Section -->

@@ -42,20 +42,35 @@ try {
         exit;
     }
 
-    // Ambil fitur mobil (misalnya dari tabel fitur_mobil jika ada)
-    // Contoh fitur statis
-    $fiturMobil = [
-        'AC' => true,
-        'Bluetooth' => true,
-        'Audio System' => true,
-        'Power Window' => true,
-        'Airbag' => true,
-        'ABS' => true,
-        'GPS' => ($mobil['harga_sewa_per_hari'] > 300000), // Fitur GPS hanya untuk mobil premium
-        'Rear Camera' => ($mobil['harga_sewa_per_hari'] > 250000), // Fitur kamera belakang untuk mobil tertentu
-        'Leather Seat' => ($mobil['harga_sewa_per_hari'] > 350000), // Kursi kulit untuk mobil premium
-        'Sunroof' => ($mobil['harga_sewa_per_hari'] > 400000), // Sunroof untuk mobil mewah
-    ];
+    // Ambil fitur mobil dari data JSON yang tersimpan di database
+    $fiturMobil = [];
+    if (!empty($mobil['fitur'])) {
+        $fiturJson = json_decode($mobil['fitur'], true);
+        
+        // Definisi nama fitur berdasarkan key
+        $fiturMapping = [
+            'ac' => 'AC',
+            'power_steering' => 'Power Steering',
+            'power_window' => 'Power Window',
+            'central_lock' => 'Central Lock',
+            'audio_system' => 'Audio System',
+            'airbag' => 'Airbag',
+            'seatbelt' => 'Seat Belt',
+            'pewangi' => 'Pewangi Mobil',
+            'bluetooth' => 'Bluetooth Connectivity',
+            'cruise_control' => 'Cruise Control',
+            'parking_sensor' => 'Parking Sensor',
+            'backup_camera' => 'Backup Camera',
+            'child_lock' => 'Child Lock',
+            'fog_lamp' => 'Fog Lamp',
+            'kursi_bayi' => 'Kursi Bayi'
+        ];
+        
+        // Buat array fitur dengan label yang benar
+        foreach ($fiturJson as $fiturKey) {
+            $fiturMobil[$fiturMapping[$fiturKey] ?? $fiturKey] = true;
+        }
+    }
 
     // Ambil review untuk mobil ini (future feature)
     $reviews = [];
@@ -188,7 +203,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                     <?php if (!empty($mobil['foto_mobil'])): ?>
                         <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover">
                     <?php else: ?>
-                        <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover">
+                        <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                            <i class="fas fa-car-side text-5xl text-gray-400"></i>
+                            <p class="ml-2 text-gray-500">Tidak ada foto</p>
+                        </div>
                     <?php endif; ?>
                 </div>
                 
@@ -197,18 +215,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-list-check mr-2 text-blue-600"></i> Fitur Mobil
                     </h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <?php foreach ($fiturMobil as $fitur => $tersedia): ?>
-                            <div class="flex items-center <?= $tersedia ? 'text-gray-800' : 'text-gray-400' ?>">
-                                <?php if ($tersedia): ?>
-                                    <i class="fas fa-check text-green-500 mr-2"></i>
-                                <?php else: ?>
-                                    <i class="fas fa-times text-red-500 mr-2"></i>
-                                <?php endif; ?>
-                                <?= $fitur ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                    <?php if (empty($fiturMobil)): ?>
+                        <div class="text-center py-4 text-gray-500">
+                            <i class="fas fa-info-circle mr-2"></i> Informasi fitur mobil tidak tersedia
+                        </div>
+                    <?php else: ?>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <?php foreach ($fiturMobil as $fitur => $tersedia): ?>
+                                <div class="flex items-center <?= $tersedia ? 'text-gray-800' : 'text-gray-400' ?>">
+                                    <?php if ($tersedia): ?>
+                                        <i class="fas fa-check text-green-500 mr-2"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-times text-red-500 mr-2"></i>
+                                    <?php endif; ?>
+                                    <?= $fitur ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
             

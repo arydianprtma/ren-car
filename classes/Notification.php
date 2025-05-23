@@ -150,6 +150,58 @@ class Notification {
     }
     
     /**
+     * Mengirim notifikasi ke admin
+     * 
+     * @param string $judul Judul notifikasi
+     * @param string $pesan Isi pesan
+     * @param string $tipe Tipe notifikasi
+     * @param int|null $referensiId ID referensi (opsional)
+     * @param string|null $referensiTabel Tabel referensi (opsional)
+     * @return bool
+     */
+    public function createAdminNotification($judul, $pesan, $tipe, $referensiId = null, $referensiTabel = null) {
+        try {
+            // Pertama, ambil semua admin dari database
+            $admins = $this->getAdminUsers();
+            
+            if (empty($admins)) {
+                error_log("No admin users found for notification");
+                return false;
+            }
+            
+            $success = true;
+            // Kirim notifikasi ke semua admin
+            foreach ($admins as $admin) {
+                $result = $this->sendNotification($admin['id'], $judul, $pesan, $tipe, $referensiId, $referensiTabel);
+                if (!$result) {
+                    $success = false;
+                }
+            }
+            
+            return $success;
+        } catch (PDOException $e) {
+            error_log("Error creating admin notification: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Mendapatkan daftar admin
+     * 
+     * @return array Daftar user admin
+     */
+    private function getAdminUsers() {
+        try {
+            $stmt = $this->db->prepare("SELECT id FROM users WHERE role = 'admin'");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting admin users: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
      * Mengirim notifikasi pengingat pembayaran
      */
     public function sendPaymentReminder($pemesananId) {
