@@ -25,7 +25,7 @@ Aplikasi ini menyediakan dua akses utama:
 - **Pencarian Mobil**: Filter berdasarkan kategori, tanggal, dan harga
 - **Detail Mobil**: Informasi lengkap tentang mobil (spesifikasi, harga, fitur)
 - **Pemesanan**: Proses pemesanan dengan konfirmasi
-- **Pembayaran**: Upload bukti transfer dan konfirmasi pembayaran
+- **Pembayaran Online**: Integrasi dengan Midtrans Payment Gateway
 - **Riwayat Pemesanan**: Lihat dan kelola riwayat pemesanan
 - **Profil User**: Edit informasi pribadi dan kata sandi
 
@@ -34,6 +34,7 @@ Aplikasi ini menyediakan dua akses utama:
 - **Backend**: PHP 7.4+ (Native)
 - **Database**: MySQL/MariaDB
 - **Frontend**: HTML, JavaScript, Tailwind CSS
+- **Payment Gateway**: Midtrans (Distribusi sistem pembayaran)
 - **PDF Generation**: mPDF
 - **Chart/Visualisasi**: Chart.js
 - **Icon**: Font Awesome
@@ -46,9 +47,10 @@ Berikut adalah tabel utama dalam database:
 1. **users**: Data pengguna (admin dan pelanggan)
 2. **mobil**: Data mobil yang tersedia untuk disewa
 3. **kategori**: Kategori mobil (SUV, Sedan, dll)
-4. **pemesanan**: Data pemesanan mobil
+4. **pemesanan**: Data pemesanan mobil termasuk kolom integrasi Midtrans
 5. **pembayaran**: Data pembayaran untuk pemesanan
-6. **notifikasi**: Notifikasi sistem
+6. **midtrans_notification**: Log notifikasi dari Midtrans payment gateway
+7. **notifikasi**: Notifikasi sistem
 
 ## Cara Instalasi
 
@@ -57,6 +59,7 @@ Berikut adalah tabel utama dalam database:
 - MySQL/MariaDB
 - Composer
 - Web Server (Apache/Nginx)
+- Akun Midtrans (untuk fitur payment gateway)
 
 ### Langkah Instalasi
 
@@ -76,38 +79,135 @@ Berikut adalah tabel utama dalam database:
    - Impor file SQL dari `database/rental_mobil.sql`
    - Sesuaikan konfigurasi database di `config/database.php`
 
-4. **Konfigurasi aplikasi**
+4. **Konfigurasi Midtrans Payment Gateway**
+   - Daftar akun di [Midtrans](https://midtrans.com/)
+   - Dapatkan API keys (Client Key dan Server Key)
+   - Sesuaikan konfigurasi di `config/midtrans/config.php`
+
+5. **Konfigurasi aplikasi**
    - Sesuaikan pengaturan di `config/config.php`
    - Atur BASE_URL dan path lainnya
 
-5. **Akses aplikasi**
+6. **Akses aplikasi**
    - Buka browser dan akses URL sesuai konfigurasi
    - Login admin default:
      - Username: admin
      - Password: admin123
 
-## Implementasi Konsep Sistem Terdistribusi
+## Implementasi Sistem Terdistribusi: Payment Gateway Midtrans
 
-Sistem Rental Mobil menerapkan beberapa konsep sistem terdistribusi:
+Sistem Rental Mobil mengimplementasikan konsep sistem terdistribusi melalui **integrasi Payment Gateway Midtrans**. Berikut adalah detail implementasinya:
 
-1. **Client-Server Architecture**:
-   - Server (backend PHP) melayani permintaan dari client (browser)
-   - Pemisahan antara logika bisnis (server) dan presentasi (client)
+### 1. Arsitektur Microservices
 
-2. **Distributed Database**:
-   - Database terpisah dari aplikasi, bisa diakses dari beberapa instance aplikasi
+Sistem ini mengadopsi pendekatan microservices dalam pemrosesan pembayaran:
 
-3. **Stateless Communication**:
-   - Komunikasi HTTP antara client-server bersifat stateless
-   - Session digunakan untuk mempertahankan state pengguna
+- **Sistem Rental Mobil (Local Server)**: Menangani manajemen mobil, user, dan pemesanan
+- **Midtrans Payment Gateway (External Server)**: Menangani pemrosesan pembayaran dan keamanan transaksi
+- **Komunikasi via API**: Kedua sistem berkomunikasi melalui API endpoints yang terdefinisi dengan jelas
 
-4. **RESTful API Principles**:
-   - Komunikasi backend-frontend menggunakan prinsip RESTful
-   - Format data JSON untuk pertukaran data
+![Arsitektur Sistem](https://example.com/architecture.png)
 
-5. **Fault Tolerance**:
-   - Validasi input di sisi client dan server
-   - Penanganan error dan exception
+### 2. Alur Transaksi Terdistribusi
+
+1. **Inisiasi Transaksi**:
+   - User melakukan pemesanan di sistem rental
+   - Sistem rental mengirim request ke server Midtrans untuk membuat transaksi
+   - Server Midtrans mengembalikan token transaksi
+
+2. **Pemrosesan Pembayaran**:
+   - User diarahkan ke halaman pembayaran Midtrans
+   - User memilih metode pembayaran (bank transfer, e-wallet, dll)
+   - Midtrans memproses pembayaran dan mengirim notifikasi ke callback URL
+
+3. **Sinkronisasi Status**:
+   - Midtrans mengirim notifikasi status pembayaran (webhook)
+   - Sistem rental memperbarui status pemesanan sesuai notifikasi
+
+### 3. Implementasi Teknis
+
+#### a. File Konfigurasi Midtrans
+```php
+// Konstanta Mode Midtrans
+define('MIDTRANS_IS_SANDBOX', true);
+
+// API Credentials
+define('MIDTRANS_SERVER_KEY', 'SB-Mid-server-xxxxx');
+define('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-xxxxx');
+
+// Endpoints
+define('MIDTRANS_SNAP_URL', 'https://app.sandbox.midtrans.com/snap/snap.js');
+define('MIDTRANS_SNAP_API_URL', 'https://app.sandbox.midtrans.com/snap/v1/transactions');
+
+// Callback URLs
+define('MIDTRANS_NOTIFICATION_URL', 'payments/midtrans/notification.php');
+define('MIDTRANS_FINISH_URL', 'payments/midtrans/finish.php');
+```
+
+#### b. Notification Handler (Webhook)
+```php
+// File notification.php - Menerima notifikasi dari Midtrans
+$notificationJson = file_get_contents('php://input');
+$notification = json_decode($notificationJson, true);
+
+// Validasi signature untuk keamanan
+$mySignature = hash('sha512', $orderId . $statusCode . $grossAmount . MIDTRANS_SERVER_KEY);
+if ($signature !== $mySignature) {
+    http_response_code(403);
+    exit;
+}
+
+// Update status pemesanan berdasarkan status Midtrans
+switch ($transactionStatus) {
+    case 'settlement':
+        $statusPemesanan = 'dikonfirmasi';
+        break;
+    case 'pending':
+        $statusPemesanan = 'menunggu';
+        break;
+    case 'cancel':
+        $statusPemesanan = 'dibatalkan';
+        break;
+}
+
+// Update database
+$stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = ? WHERE kode_pemesanan = ?");
+$stmt->execute([$statusPemesanan, $kode_pemesanan]);
+```
+
+### 4. Implementasi Konsep Sistem Terdistribusi
+
+#### a. Distributed Transactions
+- Transaksi dibagi antara sistem rental dan Midtrans
+- Two-phase commit: pemesanan di-commit setelah konfirmasi Midtrans
+
+#### b. Asynchronous Communication
+- Webhook untuk notifikasi asinkron
+- Callback URLs untuk redirect user setelah pembayaran
+
+#### c. Fault Tolerance
+- Sistem retry untuk pembayaran gagal
+- Logging transaksi di kedua sistem
+- Penanganan exception untuk error handling
+
+#### d. State Management
+- Status transaksi disimpan dan disinkronkan antar sistem
+- Mekanisme validasi signature untuk keamanan
+
+#### e. Distributed Data
+- Data pembayaran disimpan di sistem Midtrans
+- Data pemesanan disimpan di sistem rental
+- Sinkronisasi melalui ID transaksi unik
+
+### 5. Metode Pembayaran yang Tersedia
+
+Integrasi dengan Midtrans memungkinkan berbagai metode pembayaran:
+
+- Kartu Kredit/Debit
+- Virtual Account (BCA, BNI, BRI, Mandiri)
+- E-wallet (GoPay, ShopeePay, OVO)
+- QRIS
+- Convenience Store (Alfamart, Indomaret)
 
 ## Modul Fitur Laporan
 
@@ -151,99 +251,53 @@ Modul laporan menyediakan informasi statistik dan analitik tentang operasional r
 ## Analisis Sistem
 
 ### Kelebihan
-1. **Antarmuka yang Intuitif**: Desain UI/UX yang mudah digunakan
-2. **Fitur Komprehensif**: Mencakup seluruh siklus bisnis rental mobil
-3. **Responsif**: Dapat diakses dari berbagai perangkat
-4. **Visualisasi Data**: Grafik dan statistik memudahkan analisis bisnis
-5. **Keamanan**: Validasi input dan otentikasi pengguna
+1. **Sistem Pembayaran Terdistribusi**: Integrasi dengan payment gateway meningkatkan keamanan dan kemudahan pembayaran
+2. **Antarmuka yang Intuitif**: Desain UI/UX yang mudah digunakan
+3. **Fitur Komprehensif**: Mencakup seluruh siklus bisnis rental mobil
+4. **Responsif**: Dapat diakses dari berbagai perangkat
+5. **Visualisasi Data**: Grafik dan statistik memudahkan analisis bisnis
 
 ### Keterbatasan
-1. **Skalabilitas**: Arsitektur monolitik dapat membatasi skalabilitas
-2. **Ketergantungan Jaringan**: Memerlukan koneksi internet yang stabil
-3. **Integrasi Terbatas**: Belum terintegrasi dengan sistem pembayaran online atau GPS tracking
+1. **Ketergantungan pada Pihak Ketiga**: Memerlukan koneksi ke server Midtrans untuk transaksi
+2. **Kompleksitas Integrasi**: Memerlukan pengelolaan error dan status transaksi yang cermat
+3. **Ketergantungan Jaringan**: Memerlukan koneksi internet yang stabil
 
-## Panduan untuk Dokumen Laporan Akhir
+## Panduan untuk Dokumen Laporan Akhir Sistem Terdistribusi
 
 Dalam menyusun laporan akhir untuk tugas sistem terdistribusi, sebaiknya menyertakan:
 
 1. **Pendahuluan**:
-   - Latar belakang pembuatan sistem
-   - Tujuan dan manfaat
-   - Ruang lingkup
+   - Latar belakang integrasi payment gateway dalam rental mobil
+   - Tujuan dan manfaat sistem terdistribusi
+   - Ruang lingkup implementasi
 
 2. **Kajian Teori**:
    - Konsep dasar sistem terdistribusi
-   - Teknologi web (PHP, MySQL, JavaScript)
-   - Arsitektur client-server
+   - Arsitektur microservices
+   - Payment gateway dan transaksi terdistribusi
 
-3. **Analisis dan Perancangan**:
-   - Analisis kebutuhan (fungsional dan non-fungsional)
-   - Diagram alur sistem
-   - Perancangan database (ERD)
-   - Perancangan antarmuka
+3. **Perancangan Sistem**:
+   - Arsitektur sistem terdistribusi Rental Mobil-Midtrans
+   - Diagram alur transaksi pembayaran
+   - Skema komunikasi antar sistem
 
 4. **Implementasi**:
-   - Struktur kode program
-   - Screenshot dan penjelasan fitur utama
-   - Penjelasan implementasi konsep terdistribusi
+   - Konfigurasi integrasi Midtrans
+   - Implementasi webhook dan callback
+   - Penanganan sinkronisasi status
 
 5. **Pengujian**:
-   - Skenario pengujian
-   - Hasil pengujian
-   - Evaluasi kinerja sistem
+   - Skenario transaksi berhasil, pending, dan gagal
+   - Pengujian fault tolerance
+   - Evaluasi performa dan keamanan
 
 6. **Penutup**:
-   - Kesimpulan
+   - Kesimpulan implementasi sistem terdistribusi
    - Saran pengembangan lebih lanjut
-
-## Contoh Kode
-
-### Contoh Query Laporan
-
-```php
-// Query untuk laporan pemesanan per hari
-$stmt = $conn->prepare("
-    SELECT DATE(created_at) as tanggal, COUNT(*) as jumlah, SUM(total_harga) as pendapatan
-    FROM pemesanan
-    WHERE created_at BETWEEN ? AND ?
-    GROUP BY DATE(created_at)
-    ORDER BY tanggal
-");
-$stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
-$report_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-```
-
-### Contoh Implementasi Chart
-
-```javascript
-// Konfigurasi chart untuk laporan
-const config = {
-    type: 'line',
-    data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-        datasets: [{
-            label: 'Jumlah Pemesanan',
-            data: [12, 19, 3, 5, 2, 3],
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            borderColor: 'rgba(59, 130, 246, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
-};
-```
 
 ## Kesimpulan
 
-Sistem Rental Mobil mendemonstrasikan implementasi prinsip-prinsip sistem terdistribusi dalam konteks aplikasi web praktis. Dengan fitur komprehensif dan antarmuka yang intuitif, sistem ini dapat meningkatkan efisiensi operasional bisnis rental mobil dan memberikan pengalaman yang lebih baik untuk pelanggan.
+Sistem Rental Mobil berhasil mengimplementasikan konsep sistem terdistribusi melalui integrasi payment gateway Midtrans. Integrasi ini mendemonstrasikan beberapa prinsip penting sistem terdistribusi seperti arsitektur microservices, komunikasi asinkron, toleransi kesalahan, dan distributed transaction. Sistem ini tidak hanya memberikan pengalaman pembayaran yang lebih baik untuk pengguna, tetapi juga meningkatkan keamanan dan reliabilitas transaksi dengan mendistribusikan tanggung jawab pemrosesan pembayaran ke penyedia layanan terpercaya.
 
 ---
 
