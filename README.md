@@ -62,7 +62,7 @@ Berikut adalah tabel utama dalam database:
 
 1. **Clone repositori**
    ```
-   git clone https://github.com/yourusername/rental-mobil.git
+   git clone https://github.com/arydianprtma/ren-car.git
    cd rental-mobil
    ```
 
