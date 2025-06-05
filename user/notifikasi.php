@@ -227,29 +227,17 @@ include_once 'includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle dropdown menu
-    const dropdownButtons = document.querySelectorAll('.dropdown button');
-    dropdownButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menu = this.nextElementSibling;
-            
-            // Close all other menus
-            document.querySelectorAll('.dropdown-menu').forEach(m => {
-                if (m !== menu) m.classList.add('hidden');
-            });
-            
-            // Toggle current menu
-            menu.classList.toggle('hidden');
+    // Auto-hide flash messages after 3 seconds
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('[role="alert"]');
+        alerts.forEach(alert => {
+            alert.style.transition = 'opacity 1s';
+            alert.style.opacity = 0;
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 1000);
         });
-    });
-    
-    // Close dropdown on outside click
-    document.addEventListener('click', function() {
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
-            menu.classList.add('hidden');
-        });
-    });
+    }, 3000);
 });
 </script>
 

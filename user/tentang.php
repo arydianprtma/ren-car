@@ -22,19 +22,19 @@ require_once 'includes/header.php';
 </section>
 
 <!-- Sejarah Perusahaan -->
-<section class="py-16 bg-white">
-    <div class="container mx-auto px-6">
+<section class="py-16 bg-white text-justify">
+    <div class="container mx-auto px-6 text-justify">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
-                <h2 class="text-3xl font-bold text-gray-800 mb-6">Sejarah Perusahaan</h2>
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 text-justify">Sejarah Perusahaan</h2>
                 <div class="w-20 h-1 bg-blue-600 mb-6 rounded-full"></div>
-                <p class="text-gray-600 mb-4 leading-relaxed">
+                <p class="text-gray-600 mb-4 leading-relaxed text-justify">
                     Didirikan pada tahun 2010, Rental Mobil hadir untuk memenuhi kebutuhan transportasi masyarakat Indonesia dengan menyediakan layanan sewa kendaraan yang berkualitas dan terjangkau.
                 </p>
-                <p class="text-gray-600 mb-4 leading-relaxed">
+                <p class="text-gray-600 mb-4 leading-relaxed text-justify">
                     Berawal dari armada 5 kendaraan, kini kami telah berkembang menjadi salah satu penyedia layanan rental mobil terbesar dengan lebih dari 200 unit kendaraan berbagai jenis yang tersebar di berbagai kota besar di Indonesia.
                 </p>
-                <p class="text-gray-600 leading-relaxed">
+                <p class="text-gray-600 leading-relaxed text-justify">
                     Komitmen kami terhadap kualitas pelayanan dan kepuasan pelanggan menjadikan Rental Mobil sebagai pilihan utama bagi masyarakat untuk memenuhi kebutuhan transportasi mereka.
                 </p>
             </div>
@@ -70,50 +70,50 @@ require_once 'includes/header.php';
 </section> 
 
 <!-- Visi & Misi -->
-<section class="py-16 bg-gray-50">
-    <div class="container mx-auto px-6">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">Visi & Misi</h2>
+<section class="py-16 bg-gray-50 text-justify">
+    <div class="container mx-auto px-6 text-justify">
+        <div class="text-center mb-12 text-justify sm:text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 text-justify sm:text-center">Visi & Misi</h2>
             <div class="w-20 h-1 bg-blue-600 mx-auto mb-6 rounded-full"></div>
-            <p class="text-gray-600 max-w-3xl mx-auto">Komitmen kami untuk memberikan layanan terbaik bagi pelanggan</p>
+            <p class="text-gray-600 max-w-3xl mx-auto text-justify sm:text-center">Komitmen kami untuk memberikan layanan terbaik bagi pelanggan</p>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-justify">
                 <div class="bg-blue-100 rounded-full p-4 inline-flex w-16 h-16 items-center justify-center mb-6">
                     <i class="fas fa-eye text-blue-600 text-2xl"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-gray-800 mb-4">Visi</h3>
-                <p class="text-gray-600 leading-relaxed">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 text-justify">Visi</h3>
+                <p class="text-gray-600 leading-relaxed text-justify">
                     Menjadi penyedia jasa rental mobil terkemuka di Indonesia dengan standar pelayanan internasional dan armada terlengkap untuk mendukung mobilitas masyarakat Indonesia.
                 </p>
             </div>
             
-            <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-justify">
                 <div class="bg-blue-100 rounded-full p-4 inline-flex w-16 h-16 items-center justify-center mb-6">
                     <i class="fas fa-bullseye text-blue-600 text-2xl"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-gray-800 mb-4">Misi</h3>
-                <ul class="text-gray-600 leading-relaxed space-y-2">
-                    <li class="flex items-start">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 text-justify">Misi</h3>
+                <ul class="text-gray-600 leading-relaxed space-y-2 text-justify">
+                    <li class="flex items-start text-justify">
                         <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
-                        <span>Menyediakan armada kendaraan yang berkualitas dan terawat</span>
+                        <span class="text-justify">Menyediakan armada kendaraan yang berkualitas dan terawat</span>
                     </li>
-                    <li class="flex items-start">
+                    <li class="flex items-start text-justify">
                         <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
-                        <span>Memberikan pelayanan prima dengan didukung oleh tim profesional</span>
+                        <span class="text-justify">Memberikan pelayanan prima dengan didukung oleh tim profesional</span>
                     </li>
-                    <li class="flex items-start">
+                    <li class="flex items-start text-justify">
                         <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
-                        <span>Menjaga standar keamanan dan kenyamanan tertinggi bagi pelanggan</span>
+                        <span class="text-justify">Menjaga standar keamanan dan kenyamanan tertinggi bagi pelanggan</span>
                     </li>
-                    <li class="flex items-start">
+                    <li class="flex items-start text-justify">
                         <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
-                        <span>Mengembangkan jaringan layanan di seluruh kota besar di Indonesia</span>
+                        <span class="text-justify">Mengembangkan jaringan layanan di seluruh kota besar di Indonesia</span>
                     </li>
-                    <li class="flex items-start">
+                    <li class="flex items-start text-justify">
                         <i class="fas fa-check-circle text-blue-500 mt-1 mr-2"></i>
-                        <span>Berkontribusi positif terhadap masyarakat dan lingkungan</span>
+                        <span class="text-justify">Berkontribusi positif terhadap masyarakat dan lingkungan</span>
                     </li>
                 </ul>
             </div>
@@ -130,60 +130,34 @@ require_once 'includes/header.php';
             <p class="text-gray-600 max-w-3xl mx-auto">Dikelola oleh profesional berpengalaman di bidangnya</p>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
-                    <img src="<?= ASSETS_URL ?>images/team/team1.jpg" alt="CEO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Budi+Santoso&background=0062ff&color=fff&size=150'">
+        <div class="flex justify-center">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl">
+                <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
+                        <img src="<?= ASSETS_URL ?>images/team/team1.jpg" alt="CEO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=AryDian+Pratama&background=0062ff&color=fff&size=150'">
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-1">Ary Dian Pratama</h3>
+                    <p class="text-blue-600 font-medium mb-4">CEO & Founder</p>
+                    <p class="text-gray-600 text-sm mb-4">Lebih dari 15 tahun pengalaman di industri otomotif dan transportasi</p>
+                    <div class="flex items-center justify-center space-x-3">
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
+                    </div>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-1">Ary Dian Pratama</h3>
-                <p class="text-blue-600 font-medium mb-4">CEO & Founder</p>
-                <p class="text-gray-600 text-sm mb-4">Lebih dari 15 tahun pengalaman di industri otomotif dan transportasi</p>
-                <div class="flex items-center justify-center space-x-3">
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
-                    <img src="<?= ASSETS_URL ?>images/team/team2.jpg" alt="COO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Dewi+Lestari&background=0062ff&color=fff&size=150'">
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-1">Yardhan Zaendhi Anargya</h3>
-                <p class="text-blue-600 font-medium mb-4">Chief Operations Officer</p>
-                <p class="text-gray-600 text-sm mb-4">Ahli dalam manajemen operasional dan pengembangan bisnis</p>
-                <div class="flex items-center justify-center space-x-3">
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
-                    <img src="<?= ASSETS_URL ?>images/team/team3.jpg" alt="CTO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Rudi+Hermawan&background=0062ff&color=fff&size=150'">
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-1">Cooming Soon</h3>
-                <p class="text-blue-600 font-medium mb-4">Chief Technology Officer</p>
-                <p class="text-gray-600 text-sm mb-4">Spesialis teknologi dan sistem informasi transportasi</p>
-                <div class="flex items-center justify-center space-x-3">
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
-                    <img src="<?= ASSETS_URL ?>images/team/team4.jpg" alt="CFO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Maya+Sari&background=0062ff&color=fff&size=150'">
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-1">Cooming Soon</h3>
-                <p class="text-blue-600 font-medium mb-4">Chief Financial Officer</p>
-                <p class="text-gray-600 text-sm mb-4">Berpengalaman dalam manajemen keuangan dan investasi</p>
-                <div class="flex items-center justify-center space-x-3">
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
+                
+                <div class="bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="w-28 h-28 rounded-full overflow-hidden mx-auto mb-6 border-4 border-blue-100 shadow-md">
+                        <img src="<?= ASSETS_URL ?>images/team/team2.jpg" alt="COO" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=Yardhan+ZaendiAnargya&background=0062ff&color=fff&size=150'">
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-1">Yardhan Zaendhi Anargya</h3>
+                    <p class="text-blue-600 font-medium mb-4">Chief Operations Officer</p>
+                    <p class="text-gray-600 text-sm mb-4">Ahli dalam manajemen operasional dan pengembangan bisnis</p>
+                    <div class="flex items-center justify-center space-x-3">
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors"><i class="fab fa-facebook"></i></a>
+                    </div>
                 </div>
             </div>
         </div>

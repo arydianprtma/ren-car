@@ -343,7 +343,7 @@ require_once 'includes/header.php';
                             <div class="space-y-4">
                                 <!-- Midtrans Payment Gateway -->
                                 <div class="p-4 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer">
-                                    <a href="<?= USER_URL ?>payments/midtrans/process.php?kode=<?= $pemesanan['kode_pemesanan'] ?>" class="block">
+                                    <a href="<?= BASE_URL ?>payments/midtrans/process.php?kode=<?= $pemesanan['kode_pemesanan'] ?>" class="block">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center">
                                                 <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">

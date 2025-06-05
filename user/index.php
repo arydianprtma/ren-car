@@ -5,12 +5,25 @@ require_once 'includes/header.php';
 $db = new Database();
 $conn = $db->getConnection();
 
-// Ambil mobil terbaru
+// Ambil mobil terbaru (termasuk yang sedang disewa)
 $stmt = $conn->query("SELECT m.*, k.nama_kategori FROM mobil m 
                       LEFT JOIN kategori_mobil k ON m.kategori_id = k.id 
-                      WHERE m.status = 'tersedia' 
                       ORDER BY m.id DESC LIMIT 6");
 $mobilTerbaru = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Ambil informasi pemesanan untuk mobil yang sedang disewa
+$mobilDisewa = [];
+$sql = "SELECT p.mobil_id, p.tanggal_selesai 
+        FROM pemesanan p 
+        WHERE p.status_pemesanan NOT IN ('dibatalkan', 'selesai') 
+        AND p.tanggal_selesai >= CURRENT_DATE()";
+$stmt = $conn->query($sql);
+$pemesananAktif = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Buat array untuk menyimpan tanggal pengembalian mobil
+foreach ($pemesananAktif as $pemesanan) {
+    $mobilDisewa[$pemesanan['mobil_id']] = $pemesanan['tanggal_selesai'];
+}
 
 // Ambil kategori mobil
 $stmt = $conn->query("SELECT * FROM kategori_mobil ORDER BY nama_kategori ASC");
@@ -103,39 +116,43 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
+    
+    body, html {
+        overflow-x: hidden;
+    }
 </style>
 
 <!-- Hero Section -->
-<section class="hero-section min-h-[70vh] flex items-center justify-center bg-gradient-to-r from-blue-700 to-blue-500 relative overflow-hidden">
+<section class="hero-section min-h-[60vh] flex items-center justify-center bg-gradient-to-r from-blue-700 to-blue-500 relative overflow-hidden px-2 sm:px-0 text-justify sm:text-center">
     <div class="absolute inset-0 bg-black opacity-40"></div>
     <div class="absolute inset-0 bg-blue-900 opacity-10 pattern-grid-lg"></div>
-    <div class="absolute top-0 right-0 w-96 h-96 bg-blue-400 opacity-20 rounded-full -mt-20 -mr-20 blur-3xl"></div>
-    <div class="absolute bottom-0 left-0 w-72 h-72 bg-blue-300 opacity-20 rounded-full -mb-20 -ml-20 blur-3xl"></div>
+    <div class="absolute top-0 right-0 w-60 h-60 sm:w-96 sm:h-96 bg-blue-400 opacity-20 rounded-full -mt-10 sm:-mt-20 -mr-10 sm:-mr-20 blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 sm:w-72 sm:h-72 bg-blue-300 opacity-20 rounded-full -mb-10 sm:-mb-20 -ml-10 sm:-ml-20 blur-3xl"></div>
     
-    <div class="container mx-auto px-6 text-center text-white py-16 relative z-10">
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight drop-shadow-lg">Rental Mobil Terbaik untuk Perjalanan Anda</h1>
-        <p class="text-lg md:text-xl mb-10 max-w-3xl mx-auto drop-shadow-md">Sewa mobil dengan harga terjangkau dan pelayanan terbaik</p>
-        <div class="max-w-4xl mx-auto bg-white/10 backdrop-blur-sm p-2 rounded-xl shadow-2xl border border-white/20">
-            <form action="mobil.php" method="GET" class="flex flex-col md:flex-row bg-white p-5 rounded-lg">
-                <div class="flex-1 mb-4 md:mb-0 md:mr-3">
-                    <label for="kategori" class="block text-gray-700 text-sm font-semibold mb-2">Kategori Mobil</label>
-                    <select id="kategori" name="kategori" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700">
+    <div class="container mx-auto px-2 sm:px-6 text-justify sm:text-center text-white py-10 sm:py-16 relative z-10">
+        <h1 class="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight drop-shadow-lg text-justify sm:text-center">Rental Mobil Terbaik untuk Perjalanan Anda</h1>
+        <p class="text-base sm:text-lg md:text-xl mb-6 sm:mb-10 max-w-2xl sm:max-w-3xl mx-auto drop-shadow-md text-justify sm:text-center">Sewa mobil dengan harga terjangkau dan pelayanan terbaik</p>
+        <div class="max-w-full sm:max-w-4xl mx-auto bg-white/10 backdrop-blur-sm p-1 sm:p-2 rounded-xl shadow-2xl border border-white/20 text-justify">
+            <form action="mobil.php" method="GET" class="flex flex-col md:flex-row bg-white p-3 sm:p-5 rounded-lg text-justify">
+                <div class="flex-1 mb-3 md:mb-0 md:mr-3">
+                    <label for="kategori" class="block text-gray-700 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Kategori Mobil</label>
+                    <select id="kategori" name="kategori" class="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700 text-xs sm:text-base">
                         <option value="">Semua Kategori</option>
                         <?php foreach ($kategoriMobil as $kategori): ?>
                         <option value="<?= $kategori['id'] ?>"><?= $kategori['nama_kategori'] ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="flex-1 mb-4 md:mb-0 md:mr-3">
-                    <label for="tanggal_mulai" class="block text-gray-700 text-sm font-semibold mb-2">Tanggal Mulai</label>
-                    <input type="date" id="tanggal_mulai" name="tanggal_mulai" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700" min="<?= date('Y-m-d') ?>" placeholder="Pilih tanggal mulai">
+                <div class="flex-1 mb-3 md:mb-0 md:mr-3">
+                    <label for="tanggal_mulai" class="block text-gray-700 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Tanggal Mulai</label>
+                    <input type="date" id="tanggal_mulai" name="tanggal_mulai" class="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700 text-xs sm:text-base" min="<?= date('Y-m-d') ?>" placeholder="Pilih tanggal mulai">
                 </div>
-                <div class="flex-1 mb-4 md:mb-0">
-                    <label for="tanggal_selesai" class="block text-gray-700 text-sm font-semibold mb-2">Tanggal Selesai</label>
-                    <input type="date" id="tanggal_selesai" name="tanggal_selesai" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" placeholder="Pilih tanggal selesai">
+                <div class="flex-1 mb-3 md:mb-0">
+                    <label for="tanggal_selesai" class="block text-gray-700 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">Tanggal Selesai</label>
+                    <input type="date" id="tanggal_selesai" name="tanggal_selesai" class="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-700 text-xs sm:text-base" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" placeholder="Pilih tanggal selesai">
                 </div>
-                <div class="flex items-end ml-0 md:ml-4">
-                    <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all font-semibold w-full md:w-auto flex items-center justify-center">
+                <div class="flex items-end ml-0 md:ml-4 mt-2 md:mt-0">
+                    <button type="submit" class="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all font-semibold w-full md:w-auto flex items-center justify-center text-sm sm:text-base">
                         <i class="fas fa-search mr-2"></i> Cari
                     </button>
                 </div>
@@ -145,20 +162,20 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </section>
 
 <!-- Mobil Terbaru Section -->
-<section class="py-16 bg-white">
-    <div class="container mx-auto px-6">
-        <div class="flex justify-between items-center mb-10">
-            <h2 class="text-3xl font-bold text-gray-800 relative">
+<section class="py-10 sm:py-16 bg-white text-justify">
+    <div class="container mx-auto px-2 sm:px-6 text-justify">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-10 gap-2 sm:gap-0 text-justify sm:text-left">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 relative text-justify sm:text-left">
                 <span class="relative z-10">Mobil Terbaru</span>
-                <span class="absolute -bottom-3 left-0 w-1/2 h-1 bg-blue-600"></span>
+                <span class="absolute -bottom-2 sm:-bottom-3 left-0 w-1/2 h-1 bg-blue-600"></span>
             </h2>
-            <a href="mobil.php" class="text-blue-600 hover:text-blue-700 flex items-center font-medium group transition-all">
+            <a href="mobil.php" class="text-blue-600 hover:text-blue-700 flex items-center font-medium group transition-all text-sm sm:text-base text-justify sm:text-left">
                 Lihat Semua <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
             </a>
         </div>
         
         <!-- Skeleton Loader untuk Mobil Terbaru -->
-        <div id="mobil-terbaru-skeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div id="mobil-terbaru-skeleton" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
             <?php for ($i = 0; $i < 6; $i++): ?>
                 <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100">
                     <div class="h-56 bg-gray-200 relative overflow-hidden skeleton-shimmer">
@@ -196,7 +213,7 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 group">
                             <div class="h-56 bg-gray-200 relative overflow-hidden">
                                 <?php if (!empty($mobil['foto_mobil'])): ?>
-                                    <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                    <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 <?= ($mobil['status'] != 'tersedia') ? 'opacity-70' : '' ?>">
                                 <?php else: ?>
                                     <div class="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4">
                                         <i class="fas fa-car-side text-5xl text-gray-400 mb-2"></i>
@@ -208,50 +225,25 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                                 
                                 <?php 
-                                // Tampilkan badge fitur unggulan jika ada fitur mobil
-                                if (!empty($mobil['fitur'])) {
-                                    $fiturJson = json_decode($mobil['fitur'], true);
-                                    if (!empty($fiturJson)) {
-                                        $fiturMapping = [
-                                            'ac' => ['icon' => 'snowflake', 'label' => 'AC'],
-                                            'power_steering' => ['icon' => 'dharmachakra', 'label' => 'Power Steering'],
-                                            'power_window' => ['icon' => 'window-maximize', 'label' => 'Power Window'],
-                                            'central_lock' => ['icon' => 'lock', 'label' => 'Central Lock'],
-                                            'audio_system' => ['icon' => 'music', 'label' => 'Audio System'],
-                                            'airbag' => ['icon' => 'car-burst', 'label' => 'Airbag'],
-                                            'seatbelt' => ['icon' => 'user-shield', 'label' => 'Seat Belt'],
-                                            'pewangi' => ['icon' => 'spray-can-sparkles', 'label' => 'Pewangi'],
-                                            'bluetooth' => ['icon' => 'bluetooth', 'label' => 'Bluetooth'],
-                                            'cruise_control' => ['icon' => 'tachometer-alt', 'label' => 'Cruise Control'],
-                                            'parking_sensor' => ['icon' => 'parking', 'label' => 'Parking Sensor'],
-                                            'backup_camera' => ['icon' => 'camera', 'label' => 'Backup Camera'],
-                                            'child_lock' => ['icon' => 'child', 'label' => 'Child Lock'],
-                                            'fog_lamp' => ['icon' => 'lightbulb', 'label' => 'Fog Lamp'],
-                                            'kursi_bayi' => ['icon' => 'baby', 'label' => 'Kursi Bayi']
-                                        ];
-                                        
-                                        // Ambil hingga 3 fitur untuk ditampilkan di badge
-                                        $fiturToShow = [];
-                                        $counter = 0;
-                                        
-                                        foreach ($fiturJson as $fiturKey) {
-                                            if (isset($fiturMapping[$fiturKey]) && $counter < 3) {
-                                                $fiturToShow[] = '<i class="fas fa-' . $fiturMapping[$fiturKey]['icon'] . ' mr-1"></i>' . $fiturMapping[$fiturKey]['label'];
-                                                $counter++;
-                                            }
-                                        }
-                                        
-                                        if (!empty($fiturToShow)) {
-                                            echo '<div class="absolute bottom-0 left-0 bg-gradient-to-r from-blue-600 to-blue-400 text-white px-3 py-1 m-3 rounded-full text-xs font-medium shadow-md">';
-                                            echo implode(' · ', $fiturToShow);
-                                            if (count($fiturJson) > 3) {
-                                                echo ' <span class="bg-white/30 rounded-full px-1.5 py-0.5 text-[10px] ml-1">+' . (count($fiturJson) - 3) . '</span>';
-                                            }
-                                            echo '</div>';
-                                        }
-                                    }
-                                }
-                                ?>
+                                // Tampilkan status mobil jika tidak tersedia
+                                if ($mobil['status'] != 'tersedia'): ?>
+                                    <div class="absolute top-0 left-0 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
+                                        <?php if ($mobil['status'] == 'disewa'): ?>
+                                            <i class="fas fa-clock mr-1"></i> Sedang Disewa
+                                        <?php elseif ($mobil['status'] == 'pemeliharaan'): ?>
+                                            <i class="fas fa-tools mr-1"></i> Dalam Pemeliharaan
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <?php if (isset($mobilDisewa[$mobil['id']])): ?>
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <div class="bg-black bg-opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
+                                                <i class="fas fa-calendar-alt mr-1"></i> Tersedia kembali pada: <br>
+                                                <span class="text-center block mt-1"><?= date('d F Y', strtotime($mobilDisewa[$mobil['id']])) ?></span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                             </div>
                             <div class="p-6">
                                 <h3 class="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors truncate"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h3>
@@ -259,14 +251,21 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <span class="flex items-center"><i class="fas fa-car mr-2 text-blue-500"></i> <?= $mobil['tahun_produksi'] ?></span>
                                     <span class="flex items-center"><i class="fas fa-user mr-2 text-blue-500"></i> <?= $mobil['kapasitas'] ?> Orang</span>
                                     <span class="flex items-center"><i class="fas fa-gear mr-2 text-blue-500"></i> <?= ucfirst($mobil['transmisi']) ?></span>
+                                    <span class="flex items-center"><i class="fas fa-palette mr-2 text-blue-500"></i> <?= ucfirst($mobil['warna']) ?></span>
                                 </div>
                                 <div class="flex justify-between items-center pt-3 border-t border-gray-100">
                                     <div class="text-blue-600 font-bold text-lg">
                                         Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?> <span class="text-sm text-gray-500 font-normal">/ Hari</span>
                                     </div>
-                                    <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center">
-                                        <i class="fas fa-info-circle mr-1"></i> Detail
-                                    </a>
+                                    <?php if ($mobil['status'] == 'tersedia'): ?>
+                                        <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center">
+                                            <i class="fas fa-info-circle mr-1"></i> Detail
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-yellow-600 text-white px-5 py-2 rounded-lg hover:bg-yellow-700 transition-all font-medium flex items-center">
+                                            <i class="fas fa-info-circle mr-1"></i> Lihat Detail
+                                        </a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -278,15 +277,15 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </section>
 
 <!-- Kategori Section -->
-<section class="py-16 bg-gray-50">
-    <div class="container mx-auto px-6">
-        <h2 class="text-3xl font-bold text-gray-800 mb-12 text-center relative">
+<section class="py-10 sm:py-16 bg-gray-50 text-justify">
+    <div class="container mx-auto px-2 sm:px-6 text-justify">
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-8 sm:mb-12 text-center relative text-justify sm:text-center">
             <span class="relative z-10">Kategori Mobil</span>
-            <span class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-24 h-1 bg-blue-600"></span>
+            <span class="absolute bottom-[-8px] sm:bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 sm:w-24 h-1 bg-blue-600"></span>
         </h2>
         
         <!-- Skeleton Loader untuk Kategori Mobil -->
-        <div id="kategori-mobil-skeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10">
+        <div id="kategori-mobil-skeleton" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 mt-6 sm:mt-10">
             <?php for ($i = 0; $i < 6; $i++): ?>
                 <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg border border-gray-200">
                     <div class="p-8">
@@ -336,14 +335,14 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </section>
 
 <!-- Keunggulan Section -->
-<section class="py-16 bg-white">
-    <div class="container mx-auto px-6">
-        <h2 class="text-3xl font-bold text-gray-800 mb-12 text-center relative">
+<section class="py-10 sm:py-16 bg-white text-justify">
+    <div class="container mx-auto px-2 sm:px-6 text-justify">
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-8 sm:mb-12 text-center relative text-justify sm:text-center">
             <span class="relative z-10">Mengapa Memilih Kami?</span>
-            <span class="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-24 h-1 bg-blue-600"></span>
+            <span class="absolute bottom-[-8px] sm:bottom-[-10px] left-1/2 transform -translate-x-1/2 w-16 sm:w-24 h-1 bg-blue-600"></span>
         </h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
             <div class="text-center bg-gray-50 rounded-xl p-8 hover:shadow-lg transition-all duration-300 hover:bg-white border border-gray-100 group">
                 <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full p-5 inline-flex items-center justify-center w-20 h-20 mb-6 shadow-md group-hover:scale-110 transition-transform">
                     <i class="fas fa-car-side text-3xl"></i>
@@ -380,15 +379,14 @@ $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </section>
 
 <!-- CTA Section -->
-<section class="py-20 bg-gradient-to-r from-blue-700 to-blue-500 text-white relative overflow-hidden">
+<section class="py-14 sm:py-20 bg-gradient-to-r from-blue-700 to-blue-500 text-white relative overflow-hidden text-justify">
     <div class="absolute inset-0 bg-pattern opacity-10"></div>
-    <div class="absolute top-0 right-0 w-96 h-96 bg-blue-400 opacity-20 rounded-full -mt-20 -mr-20 blur-3xl"></div>
-    <div class="absolute bottom-0 left-0 w-72 h-72 bg-blue-300 opacity-20 rounded-full -mb-20 -ml-20 blur-3xl"></div>
-    
-    <div class="container mx-auto px-6 text-center relative z-10">
-        <h2 class="text-3xl md:text-4xl font-bold mb-5">Siap Untuk Menyewa Mobil?</h2>
-        <p class="text-xl mb-10 max-w-2xl mx-auto">Kami siap membantu perjalanan Anda dengan armada terbaik kami.</p>
-        <a href="mobil.php" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all inline-flex items-center justify-center hover:shadow-lg gap-2">
+    <div class="absolute top-0 right-0 w-40 h-40 sm:w-96 sm:h-96 bg-blue-400 opacity-20 rounded-full -mt-10 sm:-mt-20 -mr-10 sm:-mr-20 blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-32 h-32 sm:w-72 sm:h-72 bg-blue-300 opacity-20 rounded-full -mb-10 sm:-mb-20 -ml-10 sm:-ml-20 blur-3xl"></div>
+    <div class="container mx-auto px-2 sm:px-6 text-center relative z-10 text-justify sm:text-center">
+        <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-5 text-justify sm:text-center">Siap Untuk Menyewa Mobil?</h2>
+        <p class="text-base sm:text-xl mb-6 sm:mb-10 max-w-xl sm:max-w-2xl mx-auto text-justify sm:text-center">Kami siap membantu perjalanan Anda dengan armada terbaik kami.</p>
+        <a href="mobil.php" class="bg-white text-blue-600 px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all inline-flex items-center justify-center hover:shadow-lg gap-2 text-sm sm:text-base">
             <i class="fas fa-car-side"></i> Sewa Sekarang
         </a>
     </div>

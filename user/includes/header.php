@@ -356,7 +356,7 @@ if(isset($_SESSION['flash_message'])) {
             dropdownButtons.forEach(button => {
                 const targetId = button.dataset.dropdownToggle;
                 const target = document.getElementById(targetId);
-                
+            
                 if (!target) return;
                 
                 // Saat tombol dropdown diklik
@@ -383,10 +383,10 @@ if(isset($_SESSION['flash_message'])) {
                         target.classList.add('hidden');
                     }
                 });
-            });
-            
+                });
+                
             // Tutup dropdown saat mengklik di luar
-            document.addEventListener('click', function(e) {
+                document.addEventListener('click', function(e) {
                 const openMenus = document.querySelectorAll('.dropdown-menu:not(.hidden)');
                 
                 openMenus.forEach(menu => {
@@ -443,7 +443,7 @@ if(isset($_SESSION['flash_message'])) {
                     .catch(error => {
                         console.error('Error fetching notifications:', error);
                         notificationList.innerHTML = '<div class="text-center py-4 text-red-500 text-sm">Gagal memuat notifikasi</div>';
-                    });
+                });
             }
             
             // Menutup flash message

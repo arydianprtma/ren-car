@@ -6,6 +6,10 @@ if (isLoggedIn()) {
     redirect(USER_URL);
 }
 
+// Google Login URL
+$googleClient = getGoogleClient();
+$googleLoginUrl = $googleClient->createAuthUrl();
+
 // Proses login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = sanitize($_POST['username']);
@@ -18,22 +22,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['flash_type'] = 'red';
     } else {
         try {
-            // Cek login
-            $db = new Database();
-            $conn = $db->getConnection();
-            
+        // Cek login
+        $db = new Database();
+        $conn = $db->getConnection();
+        
             if (!$conn) {
                 throw new Exception("Koneksi database gagal");
             }
             
             $stmt = $conn->prepare("SELECT * FROM users WHERE (username = :username OR email = :email) AND status = 'aktif'");
-            $stmt->bindParam(':username', $username);
-            $stmt->bindParam(':email', $username);
-            $stmt->execute();
-            
-            if ($stmt->rowCount() > 0) {
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (password_verify($password, $user['password'])) {
+        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':email', $username);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (password_verify($password, $user['password'])) {
                     // Set session
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_username'] = $user['username'];
@@ -42,11 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Set cookie jika remember me
                     if ($remember) {
-                        $token = generateRandomString(32);
-                        setcookie('user_remember', $token, time() + (86400 * 30), '/'); // 30 hari
+                        $token = bin2hex(random_bytes(32));
                         
-                        // Simpan token di database jika diperlukan
-                        // ...
+                        // Simpan token ke database
+                        if (setRememberToken($user['id'], $token)) {
+                            setcookie('user_remember', $token, time() + (86400 * 30), '/'); // 30 hari
+                        }
                     }
                     
                     // Redirect ke homepage
@@ -67,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['flash_type'] = 'red';
                 } else {
                     $_SESSION['flash_message'] = 'Username atau email tidak ditemukan!';
-                    $_SESSION['flash_type'] = 'red';
+                $_SESSION['flash_type'] = 'red';
                 }
             }
         } catch (Exception $e) {
@@ -125,8 +130,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         /* Fix untuk iOS */
         @supports (-webkit-touch-callout: none) {
-            .main-container {
+        .main-container {
                 min-height: -webkit-fill-available;
+            }
+        }
+
+        /* Modal overlay style */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
     </style>
@@ -209,6 +249,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </form>
                 
+                <div class="relative my-4 flex items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="mx-4 flex-shrink text-gray-500 text-sm">atau</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+                
+                <div>
+                    <button id="googleLoginBtn" class="flex items-center justify-center w-full bg-white border border-gray-300 rounded-lg shadow-sm px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                            <path fill="#4285F4" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"/>
+                        </svg>
+                        Login dengan Google
+                    </button>
+                </div>
+                
                 <div class="mt-4 text-center">
                     <p class="text-gray-600">Belum punya akun? <a href="register.php" class="text-blue-600 hover:text-blue-800 font-medium">Daftar sekarang</a></p>
                 </div>
@@ -219,6 +274,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-arrow-left mr-2"></i> Kembali ke Beranda
                         </a>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup untuk Google Login -->
+    <div id="googleModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Login dengan Google</h3>
+                <p class="text-gray-600 text-sm">Silakan tunggu, Anda akan diarahkan ke halaman login Google</p>
+            </div>
+            <div class="flex justify-center">
+                <div class="google-btn-container p-4">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <iframe id="googleLoginFrame" class="w-full h-96 border-0 hidden" src="about:blank"></iframe>
                 </div>
             </div>
         </div>
@@ -236,6 +307,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }, 1000);
             }
         }, 3000);
+
+        // Google Login Popup
+        document.addEventListener('DOMContentLoaded', function() {
+            const googleLoginBtn = document.getElementById('googleLoginBtn');
+            const googleModal = document.getElementById('googleModal');
+            const googleLoginFrame = document.getElementById('googleLoginFrame');
+            const googleLoginUrl = '<?= $googleLoginUrl ?>';
+            
+            googleLoginBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Tampilkan modal
+                googleModal.style.display = 'flex';
+                
+                // Ada dua cara untuk login dengan Google:
+                // 1. Menggunakan popup window (lebih umum)
+                // 2. Menggunakan iframe (kadang diblokir oleh kebijakan keamanan)
+                
+                // Cara 1: Popup Window (lebih direkomendasikan)
+                const width = 500;
+                const height = 600;
+                const left = (window.innerWidth - width) / 2;
+                const top = (window.innerHeight - height) / 2;
+                
+                const popup = window.open(
+                    googleLoginUrl,
+                    'googleLogin',
+                    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+                );
+                
+                // Periksa apakah popup berhasil dibuka
+                if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                    // Popup diblokir, gunakan redirect normal
+                    googleModal.style.display = 'none';
+                    window.location.href = googleLoginUrl;
+                    return;
+                }
+                
+                // Interval untuk memeriksa apakah popup sudah ditutup
+                const checkPopup = setInterval(function() {
+                    if (popup.closed) {
+                        clearInterval(checkPopup);
+                        googleModal.style.display = 'none';
+                        // Refresh halaman setelah login
+                        window.location.reload();
+                    }
+                }, 500);
+                
+                // Sembunyikan modal saat mengklik di luar modal
+                googleModal.addEventListener('click', function(e) {
+                    if (e.target === googleModal) {
+                        googleModal.style.display = 'none';
+                        if (!popup.closed) {
+                            popup.close();
+                        }
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html> 

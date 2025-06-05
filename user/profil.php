@@ -18,7 +18,7 @@ $userId = $_SESSION['user_id'];
 $user = [];
 try {
     $stmt = $conn->prepare("
-        SELECT id, username, nama, email, no_telp, alamat, no_ktp, foto_ktp, created_at 
+        SELECT id, username, nama, email, no_telp, alamat, no_ktp, foto_ktp, google_id, created_at 
         FROM users 
         WHERE id = :id
     ");
@@ -32,6 +32,10 @@ try {
     exit;
 }
 
+// Cek apakah user login dengan Google dan KTP masih default
+$isGoogleUser = !empty($user['google_id']);
+$allowEditKTP = $isGoogleUser && ($user['no_ktp'] === '-' || empty($user['no_ktp']));
+
 // Cek apakah form disubmit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama = trim($_POST['nama']);
@@ -41,6 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password_lama = trim($_POST['password_lama']);
     $password_baru = trim($_POST['password_baru']);
     $konfirmasi_password = trim($_POST['konfirmasi_password']);
+    
+    // Ambil no_ktp jika user diperbolehkan edit
+    $no_ktp = $user['no_ktp'];
+    if ($allowEditKTP && isset($_POST['no_ktp'])) {
+        $no_ktp = trim($_POST['no_ktp']);
+    }
     
     // Validasi input
     $errors = [];
@@ -68,6 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Nomor telepon tidak boleh kosong";
     } elseif (!preg_match('/^[0-9]{10,15}$/', $no_telp)) {
         $errors[] = "Nomor telepon harus berisi 10-15 digit angka";
+    }
+    
+    // Validasi Nomor KTP jika user Google dan mengedit KTP
+    if ($allowEditKTP) {
+        if (empty($no_ktp) || $no_ktp === '-') {
+            $errors[] = "Nomor KTP tidak boleh kosong";
+        } elseif (!preg_match('/^[0-9]{16}$/', $no_ktp)) {
+            $errors[] = "Nomor KTP harus berisi 16 digit angka";
+        }
     }
     
     if (empty($alamat)) {
@@ -145,16 +164,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->beginTransaction();
             
             // Update data profil
-            $stmt = $conn->prepare("
-                UPDATE users 
-                SET nama = :nama, email = :email, no_telp = :no_telp, alamat = :alamat, foto_ktp = :foto_ktp
-                WHERE id = :id
-            ");
+            $sql = "UPDATE users SET nama = :nama, email = :email, no_telp = :no_telp, alamat = :alamat, foto_ktp = :foto_ktp";
+            
+            // Tambahkan no_ktp ke query jika diizinkan untuk mengedit
+            if ($allowEditKTP) {
+                $sql .= ", no_ktp = :no_ktp";
+            }
+            
+            $sql .= " WHERE id = :id";
+            
+            $stmt = $conn->prepare($sql);
             $stmt->bindParam(':nama', $nama, PDO::PARAM_STR);
             $stmt->bindParam(':email', $email, PDO::PARAM_STR);
             $stmt->bindParam(':no_telp', $no_telp, PDO::PARAM_STR);
             $stmt->bindParam(':alamat', $alamat, PDO::PARAM_STR);
             $stmt->bindParam(':foto_ktp', $foto_ktp, PDO::PARAM_STR);
+            
+            // Bind no_ktp jika diizinkan untuk mengedit
+            if ($allowEditKTP) {
+                $stmt->bindParam(':no_ktp', $no_ktp, PDO::PARAM_STR);
+            }
+            
             $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
             $stmt->execute();
             
@@ -201,6 +231,17 @@ require_once 'includes/header.php';
 <!-- Profil Section -->
 <section class="py-12 bg-gray-50">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <?php if ($allowEditKTP): ?>
+        <div class="mb-6 rounded-lg bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 relative" role="alert">
+            <div class="flex">
+                <div class="py-1"><i class="fas fa-exclamation-circle fa-2x mr-4"></i></div>
+                <div>
+                    <p class="font-bold">Lengkapi Data Anda</p>
+                    <p class="text-sm">Karena Anda login menggunakan Google, silakan lengkapi nomor KTP Anda untuk pengalaman yang lebih baik.</p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="flex flex-col md:flex-row gap-8">
             <!-- Sidebar / Profile Card -->
             <div class="w-full md:w-1/3">
@@ -272,8 +313,13 @@ require_once 'includes/header.php';
                             
                             <div>
                                 <label for="no_ktp" class="block text-gray-700 text-sm font-medium mb-2">Nomor KTP</label>
+                                <?php if ($allowEditKTP): ?>
+                                <input type="text" id="no_ktp" name="no_ktp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" value="<?= $user['no_ktp'] === '-' ? '' : htmlspecialchars($user['no_ktp']) ?>" required>
+                                <p class="text-xs text-blue-500 mt-1">Silakan lengkapi nomor KTP Anda.</p>
+                                <?php else: ?>
                                 <input type="text" id="no_ktp" name="no_ktp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-100" value="<?= htmlspecialchars($user['no_ktp']) ?>" disabled>
                                 <p class="text-xs text-gray-500 mt-1">Nomor KTP tidak dapat diubah.</p>
+                                <?php endif; ?>
                             </div>
                         </div>
                         

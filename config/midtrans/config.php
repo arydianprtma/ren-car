@@ -24,12 +24,12 @@ if (MIDTRANS_IS_SANDBOX) {
 }
 
 // URL untuk notification handler
-define('MIDTRANS_NOTIFICATION_URL', USER_URL . 'payments/midtrans/notification.php');
+define('MIDTRANS_NOTIFICATION_URL', BASE_URL . 'payments/midtrans/notification.php');
 
 // URL untuk finish, unfinish, dan error redirect
-define('MIDTRANS_FINISH_URL', USER_URL . 'payments/midtrans/finish.php');
-define('MIDTRANS_UNFINISH_URL', USER_URL . 'payments/midtrans/unfinish.php');
-define('MIDTRANS_ERROR_URL', USER_URL . 'payments/midtrans/error.php');
+define('MIDTRANS_FINISH_URL', BASE_URL . 'payments/midtrans/finish.php');
+define('MIDTRANS_UNFINISH_URL', BASE_URL . 'payments/midtrans/unfinish.php');
+define('MIDTRANS_ERROR_URL', BASE_URL . 'payments/midtrans/error.php');
 
 // Jenis pembayaran yang diaktifkan
 define('MIDTRANS_ENABLED_PAYMENTS', [

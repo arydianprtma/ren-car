@@ -279,7 +279,7 @@ require_once '../includes/header.php';
                 <label for="bahan_bakar" class="block text-sm font-medium text-gray-700 mb-1">Bahan Bakar <span class="text-red-600">*</span></label>
                 <select id="bahan_bakar" name="bahan_bakar" class="w-full px-3 py-2 border <?= isset($errors['bahan_bakar']) ? 'border-red-500' : 'border-gray-300' ?> rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors">
                     <option value="bensin" <?= ($bahan_bakar == 'bensin') ? 'selected' : '' ?>>Bensin</option>
-                    <option value="solar" <?= ($bahan_bakar == 'solar') ? 'selected' : '' ?>>Solar</option>
+                    <option value="diesel" <?= ($bahan_bakar == 'diesel') ? 'selected' : '' ?>>Diesel</option>
                     <option value="listrik" <?= ($bahan_bakar == 'listrik') ? 'selected' : '' ?>>Listrik</option>
                     <option value="hybrid" <?= ($bahan_bakar == 'hybrid') ? 'selected' : '' ?>>Hybrid</option>
                 </select>

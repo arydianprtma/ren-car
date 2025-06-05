@@ -16,14 +16,102 @@ $user_id = $_SESSION['user_id'];
 $db = new Database();
 $conn = $db->getConnection();
 
+// Proses permintaan pengembalian mobil
+if (isset($_POST['action']) && $_POST['action'] === 'return' && isset($_POST['kode_pemesanan'])) {
+    $kode_pemesanan = $_POST['kode_pemesanan'];
+    $kondisi_mobil = isset($_POST['kondisi_mobil']) ? trim($_POST['kondisi_mobil']) : '';
+    $catatan_tambahan = isset($_POST['catatan_tambahan']) ? trim($_POST['catatan_tambahan']) : '';
+    
+    try {
+        // Mulai transaksi untuk memastikan integritas data
+        $conn->beginTransaction();
+        
+        // Periksa apakah pesanan ada dan milik user yang sedang login
+        $check_stmt = $conn->prepare("SELECT p.id, p.status_pemesanan, p.mobil_id, m.model, m.nomor_plat 
+                                     FROM pemesanan p 
+                                     JOIN mobil m ON p.mobil_id = m.id 
+                                     WHERE p.kode_pemesanan = ? AND p.user_id = ?");
+        $check_stmt->execute([$kode_pemesanan, $user_id]);
+        $pemesanan = $check_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$pemesanan) {
+            // Pesanan tidak ditemukan atau bukan milik user
+            $_SESSION['flash_message'] = "Pesanan tidak ditemukan";
+            $_SESSION['flash_type'] = "red";
+            header("Location: " . USER_URL . "pesanan.php");
+            exit;
+        }
+        
+        // Periksa apakah status pesanan adalah 'berjalan'
+        if ($pemesanan['status_pemesanan'] != 'berjalan') {
+            $_SESSION['flash_message'] = "Pesanan tidak dapat dikembalikan karena status tidak valid";
+            $_SESSION['flash_type'] = "red";
+            header("Location: " . USER_URL . "pesanan.php");
+            exit;
+        }
+        
+        // Buat entri pengembalian
+        $stmt = $conn->prepare("INSERT INTO pengembalian (pemesanan_id, tanggal_pengembalian, kondisi_mobil, catatan) 
+                              VALUES (?, NOW(), ?, ?)");
+        $stmt->execute([$pemesanan['id'], $kondisi_mobil, $catatan_tambahan]);
+        
+        // Update status pemesanan menjadi 'pending_return' (menunggu konfirmasi pengembalian)
+        $update_stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'pending_return', updated_at = NOW() WHERE kode_pemesanan = ?");
+        $update_stmt->execute([$kode_pemesanan]);
+        
+        // Catatan: Status mobil tetap 'disewa' sampai admin mengkonfirmasi pengembalian
+        // Tidak perlu mengubah status mobil di sini
+        
+        // Kirim notifikasi pengembalian ke admin
+        require_once '../classes/Notification.php';
+        $notif = new Notification($conn);
+        
+        $judul = "Permintaan Pengembalian Mobil";
+        $pesan = "Pelanggan telah mengajukan pengembalian mobil " . $pemesanan['model'] . " (" . $pemesanan['nomor_plat'] . ") dengan kode pemesanan " . $kode_pemesanan . ".";
+        
+        if (!empty($kondisi_mobil)) {
+            $pesan .= " Kondisi mobil: " . $kondisi_mobil;
+        }
+        
+        if (!empty($catatan_tambahan)) {
+            $pesan .= " Catatan tambahan: " . $catatan_tambahan;
+        }
+        
+        $notif->createAdminNotification($judul, $pesan, 'pengembalian');
+        
+        // Commit transaksi
+        $conn->commit();
+        
+        $_SESSION['flash_message'] = "Permintaan pengembalian mobil berhasil dikirim. Admin akan segera memproses pengembalian ini.";
+        $_SESSION['flash_type'] = "green";
+        header("Location: " . USER_URL . "pesanan.php");
+        exit;
+        
+    } catch (PDOException $e) {
+        // Rollback transaksi jika terjadi error
+        $conn->rollBack();
+        
+        $_SESSION['flash_message'] = "Gagal mengirimkan permintaan pengembalian: " . $e->getMessage();
+        $_SESSION['flash_type'] = "red";
+        header("Location: " . USER_URL . "pesanan.php");
+        exit;
+    }
+}
+
 // Proses pembatalan pesanan jika ada request pembatalan
 if (isset($_POST['action']) && $_POST['action'] === 'cancel' && isset($_POST['kode_pemesanan'])) {
     $kode_pemesanan = $_POST['kode_pemesanan'];
     $alasan_pembatalan = isset($_POST['alasan_pembatalan']) ? trim($_POST['alasan_pembatalan']) : '';
     
     try {
+        // Mulai transaksi untuk memastikan integritas data
+        $conn->beginTransaction();
+        
         // Periksa apakah pesanan ada dan milik user yang sedang login
-        $check_stmt = $conn->prepare("SELECT id, status_pemesanan FROM pemesanan WHERE kode_pemesanan = ? AND user_id = ?");
+        $check_stmt = $conn->prepare("SELECT p.id, p.status_pemesanan, p.mobil_id, m.model 
+                                     FROM pemesanan p 
+                                     JOIN mobil m ON p.mobil_id = m.id 
+                                     WHERE p.kode_pemesanan = ? AND p.user_id = ?");
         $check_stmt->execute([$kode_pemesanan, $user_id]);
         $pemesanan = $check_stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -43,9 +131,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'cancel' && isset($_POST['ko
             exit;
         }
         
-        // Update status pesanan menjadi dibatalkan (tanpa menyimpan alasan pembatalan di database)
+        // Update status pesanan menjadi dibatalkan
         $update_stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'dibatalkan', updated_at = NOW() WHERE kode_pemesanan = ?");
         $update_stmt->execute([$kode_pemesanan]);
+        
+        // Update status mobil menjadi tersedia kembali
+        $update_mobil_stmt = $conn->prepare("UPDATE mobil SET status = 'tersedia' WHERE id = ?");
+        $update_mobil_stmt->execute([$pemesanan['mobil_id']]);
         
         // Kirim notifikasi pembatalan ke admin
         require_once '../classes/Notification.php';
@@ -57,12 +149,18 @@ if (isset($_POST['action']) && $_POST['action'] === 'cancel' && isset($_POST['ko
         }
         $notif->createAdminNotification($judul, $pesan, 'pembatalan');
         
+        // Commit transaksi
+        $conn->commit();
+        
         $_SESSION['flash_message'] = "Pesanan berhasil dibatalkan";
         $_SESSION['flash_type'] = "green";
         header("Location: " . USER_URL . "pesanan.php");
         exit;
         
     } catch (PDOException $e) {
+        // Rollback transaksi jika terjadi error
+        $conn->rollBack();
+        
         $_SESSION['flash_message'] = "Gagal membatalkan pesanan: " . $e->getMessage();
         $_SESSION['flash_type'] = "red";
         header("Location: " . USER_URL . "pesanan.php");
@@ -108,6 +206,8 @@ function getStatusLabel($status) {
             return '<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center"><i class="fas fa-check-circle mr-1 text-blue-600"></i>Dikonfirmasi</span>';        
         case 'berjalan':            
             return '<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center"><i class="fas fa-car mr-1 text-green-600"></i>Berjalan</span>';        
+        case 'pending_return':            
+            return '<span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center"><i class="fas fa-hourglass-half mr-1 text-indigo-600"></i>Menunggu Konfirmasi Pengembalian</span>';
         case 'selesai':            
             return '<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center"><i class="fas fa-check-double mr-1 text-green-600"></i>Selesai</span>';        
         case 'dibatalkan':            
@@ -122,12 +222,12 @@ require_once 'includes/header.php';
 ?>
 
 <!-- Breadcrumb -->
-<div class="bg-gray-100 py-3">
+<div class="bg-gray-100 py-3 border-b border-gray-200">
     <div class="container mx-auto px-6">
         <div class="flex text-sm">
-            <a href="<?= USER_URL ?>" class="text-blue-600 hover:text-blue-800">Beranda</a>
+            <a href="<?= USER_URL ?>" class="text-blue-600 hover:text-blue-800 transition-colors">Beranda</a>
             <span class="mx-2 text-gray-500">/</span>
-            <span class="text-gray-600">Pesanan Saya</span>
+            <span class="text-gray-600 font-medium">Pesanan Saya</span>
         </div>
     </div>
 </div>
@@ -136,15 +236,19 @@ require_once 'includes/header.php';
 <section class="py-12 bg-gray-50">
     <div class="container mx-auto px-6">
         <!-- Header dengan statistik ringkas -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 mb-6 overflow-hidden relative">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -mt-32 -mr-32 opacity-30"></div>
+        <div class="bg-white rounded-xl shadow-md p-8 border border-gray-200 mb-8 overflow-hidden relative">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-blue-50 rounded-full -mt-32 -mr-32 opacity-30"></div>
+            <div class="absolute -bottom-16 -left-16 w-64 h-64 bg-indigo-50 rounded-full opacity-30"></div>
             <div class="relative z-10">
                 <h1 class="text-3xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-car text-blue-600 mr-3"></i>Pesanan Saya
+                    <span class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-2 mr-4 text-white shadow-md">
+                        <i class="fas fa-car-side text-2xl"></i>
+                    </span>
+                    Pesanan Saya
                 </h1>
-                <p class="text-gray-600 mb-6">Kelola dan pantau semua pesanan rental mobil Anda di satu tempat</p>
+                <p class="text-gray-600 mb-8 max-w-3xl">Kelola dan pantau semua pesanan rental mobil Anda di satu tempat. Lihat status, detail, dan riwayat pemesanan Anda.</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <?php
                     // Hitung jumlah pesanan berdasarkan status
                     $statusCounts = [
@@ -162,43 +266,43 @@ require_once 'includes/header.php';
                     }
                     ?>
                     
-                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 flex items-center hover:shadow-md transition-all duration-300 transform hover:translate-y-[-3px]">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-calendar-check text-blue-600 text-xl"></i>
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 flex items-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 group">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center mr-4 shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fas fa-calendar-check text-white text-xl"></i>
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold text-blue-800"><?= $statusCounts['total'] ?></h3>
-                            <p class="text-sm text-blue-600">Total Pesanan</p>
+                            <p class="text-sm font-medium text-blue-600">Total Pesanan</p>
                         </div>
                     </div>
                     
-                    <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-100 flex items-center hover:shadow-md transition-all duration-300 transform hover:translate-y-[-3px]">
-                        <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                    <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-5 border border-yellow-200 flex items-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 group">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 flex items-center justify-center mr-4 shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fas fa-clock text-white text-xl"></i>
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold text-yellow-800"><?= $statusCounts['menunggu'] ?></h3>
-                            <p class="text-sm text-yellow-600">Menunggu Pembayaran</p>
+                            <p class="text-sm font-medium text-yellow-600">Menunggu Pembayaran</p>
                         </div>
                     </div>
                     
-                    <div class="bg-green-50 rounded-lg p-4 border border-green-100 flex items-center hover:shadow-md transition-all duration-300 transform hover:translate-y-[-3px]">
-                        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-car-side text-green-600 text-xl"></i>
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200 flex items-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 group">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center mr-4 shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fas fa-car-side text-white text-xl"></i>
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold text-green-800"><?= $statusCounts['berjalan'] ?></h3>
-                            <p class="text-sm text-green-600">Sedang Berjalan</p>
+                            <p class="text-sm font-medium text-green-600">Sedang Berjalan</p>
                         </div>
                     </div>
                     
-                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-100 flex items-center hover:shadow-md transition-all duration-300 transform hover:translate-y-[-3px]">
-                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-check-double text-purple-600 text-xl"></i>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 border border-purple-200 flex items-center hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 group">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-4 shadow-md group-hover:scale-110 transition-transform">
+                            <i class="fas fa-check-double text-white text-xl"></i>
                         </div>
                         <div>
                             <h3 class="text-2xl font-bold text-purple-800"><?= $statusCounts['selesai'] ?></h3>
-                            <p class="text-sm text-purple-600">Pesanan Selesai</p>
+                            <p class="text-sm font-medium text-purple-600">Pesanan Selesai</p>
                         </div>
                     </div>
                 </div>
@@ -206,12 +310,15 @@ require_once 'includes/header.php';
         </div>
         
         <!-- Filters -->
-        <div class="bg-white rounded-xl shadow-md p-4 border border-gray-200 mb-6 transition-all hover:shadow-lg">
-            <form action="" method="GET" class="flex flex-wrap items-center gap-4">
-                <div class="flex-1 min-w-[200px]">
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Filter Status</label>
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 mb-8 transition-all hover:shadow-lg">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-filter text-blue-600 mr-2"></i> Filter Pesanan
+            </h3>
+            <form action="" method="GET" class="flex flex-wrap items-end gap-4">
+                <div class="flex-1 min-w-[250px]">
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status Pesanan</label>
                     <div class="relative">
-                        <select id="status" name="status" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none">
+                        <select id="status" name="status" class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none shadow-sm">
                             <option value="">Semua Status</option>                  
                             <option value="menunggu" <?= $status === 'menunggu' ? 'selected' : '' ?>>Menunggu Pembayaran</option>
                             <option value="dibayar" <?= $status === 'dibayar' ? 'selected' : '' ?>>Dibayar</option>
@@ -220,23 +327,23 @@ require_once 'includes/header.php';
                             <option value="selesai" <?= $status === 'selesai' ? 'selected' : '' ?>>Selesai</option>
                             <option value="dibatalkan" <?= $status === 'dibatalkan' ? 'selected' : '' ?>>Dibatalkan</option>
                         </select>
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
-                            <i class="fas fa-filter"></i>
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-blue-600">
+                            <i class="fas fa-list-ul"></i>
                         </div>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
                             <i class="fas fa-chevron-down"></i>
                         </div>
                     </div>
                 </div>
                 
-                <div class="flex items-end">
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all flex items-center shadow-sm hover:shadow-md">
+                <div class="flex items-end space-x-3">
+                    <button type="submit" class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all flex items-center shadow-md hover:shadow-lg">
                         <i class="fas fa-search mr-2"></i> Terapkan Filter
                     </button>
                     
                     <?php if (!empty($status)): ?>
-                    <a href="<?= USER_URL ?>pesanan.php" class="ml-2 text-blue-600 hover:text-blue-800 flex items-center hover:underline">
-                        <i class="fas fa-times-circle mr-1"></i> Reset
+                    <a href="<?= USER_URL ?>pesanan.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg transition-all flex items-center border border-gray-300 hover:border-gray-400">
+                        <i class="fas fa-sync-alt mr-2"></i> Reset
                     </a>
                     <?php endif; ?>
                 </div>
@@ -273,7 +380,7 @@ require_once 'includes/header.php';
                     <div class="mb-6 group">
                         <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden group-hover:shadow-lg transition-all duration-300">
                             <!-- Header Pesanan -->
-                            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4 flex flex-col sm:flex-row justify-between sm:items-center">
                                 <div class="flex flex-col">
                                     <span class="text-xs text-gray-500 mb-1">Kode Pemesanan:</span>
                                     <div class="flex items-center">
@@ -389,6 +496,12 @@ require_once 'includes/header.php';
                                                     <span class="text-xs text-gray-500 block">Durasi Sewa</span>
                                                     <div class="flex items-center mt-1 text-gray-700">
                                                         <i class="fas fa-clock mr-2 text-purple-500"></i>
+                                                        <?php
+                                                        // Hitung durasi dalam hari
+                                                        $tanggal_mulai = new DateTime($pesanan['tanggal_mulai']);
+                                                        $tanggal_selesai = new DateTime($pesanan['tanggal_selesai']);
+                                                        $durasi = $tanggal_selesai->diff($tanggal_mulai)->days;
+                                                        ?>
                                                         <span class="font-medium"><?= $durasi ?> hari</span>
                                                     </div>
                                                 </div>
@@ -417,6 +530,15 @@ require_once 'includes/header.php';
                                                 <button type="button" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all text-center flex items-center justify-center btn-cancel shadow-sm hover:shadow-md" data-kode="<?= $pesanan['kode_pemesanan'] ?>">
                                                     <i class="fas fa-times-circle mr-2"></i> Batalkan
                                                 </button>
+                                            <?php elseif ($pesanan['status_pemesanan'] === 'berjalan'): ?>
+                                                <a href="<?= USER_URL ?>pemesanan_detail.php?kode=<?= $pesanan['kode_pemesanan'] ?>" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all text-center flex items-center justify-center shadow-sm hover:shadow-md">
+                                                    <i class="fas fa-eye mr-2"></i> Lihat Detail
+                                                </a>
+                                                <?php if ($pesanan['status_pemesanan'] === 'berjalan'): ?>
+                                                <button type="button" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all text-center flex items-center justify-center btn-return shadow-sm hover:shadow-md" data-kode="<?= $pesanan['kode_pemesanan'] ?>">
+                                                    <i class="fas fa-car-side mr-2"></i> Kembalikan Mobil
+                                                </button>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <a href="<?= USER_URL ?>pemesanan_detail.php?kode=<?= $pesanan['kode_pemesanan'] ?>" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all text-center flex items-center justify-center shadow-sm hover:shadow-md">
                                                     <i class="fas fa-eye mr-2"></i> Lihat Detail
@@ -485,6 +607,51 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- Modal Pengembalian Mobil -->
+<div id="returnModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden transition-opacity duration-300">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="returnModalContent">
+        <div class="p-6">
+            <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-car-side text-green-500 mr-2"></i>
+                    Konfirmasi Pengembalian Mobil
+                </h3>
+                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" id="closeReturnModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4 bg-blue-50 text-blue-700 p-3 rounded-lg border border-blue-200">
+                <p><i class="fas fa-info-circle mr-2"></i> Konfirmasi pengembalian mobil Anda. Admin akan memeriksa kondisi mobil dan menyelesaikan proses pengembalian.</p>
+            </div>
+            
+            <form id="returnForm" action="" method="POST">
+                <input type="hidden" name="action" value="return">
+                <input type="hidden" name="kode_pemesanan" id="return_kode_pemesanan" value="">
+                
+                <div class="mb-4">
+                    <label for="kondisi_mobil" class="block text-sm font-medium text-gray-700 mb-1">Kondisi Mobil Saat Ini</label>
+                    <textarea id="kondisi_mobil" name="kondisi_mobil" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-colors" placeholder="Deskripsikan kondisi mobil saat ini (opsional)..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="catatan_tambahan" class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+                    <textarea id="catatan_tambahan" name="catatan_tambahan" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-colors" placeholder="Informasi tambahan yang perlu diketahui admin..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-all shadow-sm text-gray-600" id="cancelReturnButton">
+                        <i class="fas fa-times mr-2"></i> Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm">
+                        <i class="fas fa-check mr-2"></i> Konfirmasi Pengembalian
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- CTA Section -->
 <section class="py-12 bg-gray-50">
     <div class="container mx-auto px-6">
@@ -512,6 +679,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelButton = document.getElementById('cancelButton');
     const kodeInput = document.getElementById('kode_pemesanan');
     
+    // Modal pengembalian
+    const returnButtons = document.querySelectorAll('.btn-return');
+    const returnModal = document.getElementById('returnModal');
+    const returnModalContent = document.getElementById('returnModalContent');
+    const closeReturnModal = document.getElementById('closeReturnModal');
+    const cancelReturnButton = document.getElementById('cancelReturnButton');
+    const returnKodeInput = document.getElementById('return_kode_pemesanan');
+    
     // Tampilkan modal saat tombol batalkan diklik
     cancelButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -527,7 +702,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Sembunyikan modal
+    // Tampilkan modal pengembalian saat tombol kembalikan diklik
+    returnButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const kode = this.getAttribute('data-kode');
+            returnKodeInput.value = kode;
+            returnModal.classList.remove('hidden');
+            
+            // Animasi fade in
+            setTimeout(() => {
+                returnModalContent.classList.add('scale-100', 'opacity-100');
+                returnModalContent.classList.remove('scale-95', 'opacity-0');
+            }, 50);
+        });
+    });
+    
+    // Sembunyikan modal pembatalan
     const hideModal = () => {
         // Animasi fade out
         modalContent.classList.remove('scale-100', 'opacity-100');
@@ -538,13 +728,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     };
     
+    // Sembunyikan modal pengembalian
+    const hideReturnModal = () => {
+        // Animasi fade out
+        returnModalContent.classList.remove('scale-100', 'opacity-100');
+        returnModalContent.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            returnModal.classList.add('hidden');
+        }, 300);
+    };
+    
     closeModal.addEventListener('click', hideModal);
     cancelButton.addEventListener('click', hideModal);
+    
+    closeReturnModal.addEventListener('click', hideReturnModal);
+    cancelReturnButton.addEventListener('click', hideReturnModal);
     
     // Tutup modal saat klik di luar modal
     cancelModal.addEventListener('click', function(e) {
         if (e.target === this) {
             hideModal();
+        }
+    });
+    
+    // Tutup modal pengembalian saat klik di luar modal
+    returnModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideReturnModal();
         }
     });
     
@@ -576,6 +787,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fallback untuk browser lama
         animateStatCards();
     }
+    
+    // Fungsi copy to clipboard
+    window.copyToClipboard = function(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Tampilkan notifikasi sukses
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg z-50 animate-fadeIn';
+            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Kode berhasil disalin!';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('animate-fadeOut');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 2000);
+        }).catch(function(err) {
+            console.error('Gagal menyalin: ', err);
+        });
+    }
 });
 </script>
 
@@ -585,8 +816,17 @@ document.addEventListener('DOMContentLoaded', function() {
     to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(10px); }
+}
+
 .animate-fadeIn {
     animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-fadeOut {
+    animation: fadeOut 0.5s ease-out forwards;
 }
 </style>
 

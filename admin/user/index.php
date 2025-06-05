@@ -123,7 +123,7 @@ $totalPages = ceil($totalItems / $limit);
             </button>
             <a href="<?= ADMIN_URL ?>user/index.php" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg shadow-sm transition duration-200 flex items-center">
                 <i class="fas fa-sync-alt mr-2"></i> Reset
-            </a>
+                </a>
         </div>
     </form>
 </div>

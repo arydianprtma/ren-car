@@ -80,6 +80,33 @@ try {
         exit; // Tidak akan pernah dijalankan karena redirect() sudah exit
     }
     
+    // Menandai semua notifikasi dalam kategori yang sedang dilihat sebagai sudah dibaca
+    if ($category !== 'all' && !isset($_GET['no_auto_read'])) {
+        // Tandai semua notifikasi dalam kategori ini sebagai dibaca
+        try {
+            $stmt = $conn->prepare("
+                UPDATE notifikasi 
+                SET status = 'dibaca' 
+                WHERE user_id = :user_id AND tipe = :tipe AND status = 'belum_dibaca'
+            ");
+            
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindParam(':tipe', $category, PDO::PARAM_STR);
+            $stmt->execute();
+            
+            $rowsAffected = $stmt->rowCount();
+            
+            if ($rowsAffected > 0) {
+                error_log("Marked {$rowsAffected} notifications as read in category {$category}");
+                // Refresh halaman untuk memperbarui jumlah notifikasi di sidebar
+                redirect(ADMIN_URL . 'notifications.php?kategori=' . $category . '&no_auto_read=1');
+                exit;
+            }
+        } catch (PDOException $e) {
+            error_log("Error marking category notifications as read: " . $e->getMessage());
+        }
+    }
+    
     // Ambil notifikasi
     $notifications = $notif->getUserNotifications($userId, $limit, $offset);
     

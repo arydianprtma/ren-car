@@ -16,10 +16,9 @@ $conn = $db->getConnection();
 $stmt = $conn->query("SELECT * FROM kategori_mobil ORDER BY nama_kategori ASC");
 $kategoriMobil = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Buat query dasar
+// Buat query dasar - Tampilkan semua mobil, tidak hanya yang tersedia
 $sql = "SELECT m.*, k.nama_kategori FROM mobil m 
-        LEFT JOIN kategori_mobil k ON m.kategori_id = k.id 
-        WHERE m.status = 'tersedia'";
+        LEFT JOIN kategori_mobil k ON m.kategori_id = k.id";
 $params = [];
 
 // Tambahkan filter ke query
@@ -31,6 +30,11 @@ if (!empty($kategori_id)) {
 if (!empty($kata_kunci)) {
     $sql .= " AND (m.merk LIKE :kata_kunci OR m.model LIKE :kata_kunci)";
     $params[':kata_kunci'] = "%$kata_kunci%";
+}
+
+// Mulai dengan WHERE jika belum ada kondisi
+if (empty($kategori_id) && empty($kata_kunci)) {
+    $sql .= " WHERE 1=1";
 }
 
 // Urutkan hasil
@@ -54,6 +58,20 @@ foreach ($params as $key => $val) {
 }
 $stmt->execute();
 $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Ambil informasi pemesanan aktif untuk mobil yang sedang disewa
+$mobilDisewa = [];
+$sql = "SELECT p.mobil_id, p.tanggal_selesai 
+        FROM pemesanan p 
+        WHERE p.status_pemesanan NOT IN ('dibatalkan', 'selesai') 
+        AND p.tanggal_selesai >= CURRENT_DATE()";
+$stmt = $conn->query($sql);
+$pemesananAktif = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Buat array untuk menyimpan tanggal pengembalian mobil
+foreach ($pemesananAktif as $pemesanan) {
+    $mobilDisewa[$pemesanan['mobil_id']] = $pemesanan['tanggal_selesai'];
+}
 ?>
 
 <style>
@@ -187,7 +205,7 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 group hover-scale h-full flex flex-col">
                             <div class="h-48 sm:h-60 bg-gray-200 relative overflow-hidden">
                                 <?php if (!empty($mobil['foto_mobil'])): ?>
-                                    <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                    <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 <?= ($mobil['status'] != 'tersedia') ? 'opacity-70' : '' ?>">
                                 <?php else: ?>
                                     <div class="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4">
                                         <i class="fas fa-car-side text-5xl text-gray-400 mb-2"></i>
@@ -198,6 +216,27 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
                                     <?= $mobil['nama_kategori'] ?? 'Uncategorized' ?>
                                 </div>
+                                
+                                <?php 
+                                // Tampilkan status mobil jika tidak tersedia
+                                if ($mobil['status'] != 'tersedia'): ?>
+                                    <div class="absolute top-0 left-0 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
+                                        <?php if ($mobil['status'] == 'disewa'): ?>
+                                            <i class="fas fa-clock mr-1"></i> Sedang Disewa
+                                        <?php elseif ($mobil['status'] == 'pemeliharaan'): ?>
+                                            <i class="fas fa-tools mr-1"></i> Dalam Pemeliharaan
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <?php if (isset($mobilDisewa[$mobil['id']])): ?>
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <div class="bg-black bg-opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
+                                                <i class="fas fa-calendar-alt mr-1"></i> Tersedia kembali pada: <br>
+                                                <span class="text-center block mt-1"><?= date('d F Y', strtotime($mobilDisewa[$mobil['id']])) ?></span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                                 
                                 <?php 
                                 // Tampilkan badge fitur unggulan jika ada fitur mobil
@@ -309,9 +348,15 @@ $mobilList = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                     
                                     <div>
-                                        <a href="detail-mobil.php?id=<?= $mobil['id'] ?><?= (!empty($tanggal_mulai) && !empty($tanggal_selesai)) ? '&tanggal_mulai=' . $tanggal_mulai . '&tanggal_selesai=' . $tanggal_selesai : '' ?>" class="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center">
-                                            <i class="fas fa-info-circle mr-1"></i> Detail
-                                        </a>
+                                        <?php if ($mobil['status'] == 'tersedia'): ?>
+                                            <a href="detail-mobil.php?id=<?= $mobil['id'] ?><?= (!empty($tanggal_mulai) && !empty($tanggal_selesai)) ? '&tanggal_mulai=' . $tanggal_mulai . '&tanggal_selesai=' . $tanggal_selesai : '' ?>" class="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center">
+                                                <i class="fas fa-info-circle mr-1"></i> Detail
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-gray-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-gray-600 transition-all font-medium flex items-center justify-center">
+                                                <i class="fas fa-info-circle mr-1"></i> Detail
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -381,20 +426,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const tanggalSelesai = document.getElementById('tanggal_selesai');
     
     if (tanggalMulai && tanggalSelesai) {
-        tanggalMulai.addEventListener('change', function() {
-            // Set minimum tanggal selesai = tanggal mulai + 1 hari
-            if (tanggalMulai.value) {
-                const nextDay = new Date(tanggalMulai.value);
-                nextDay.setDate(nextDay.getDate() + 1);
-                const formattedDate = nextDay.toISOString().split('T')[0];
-                tanggalSelesai.min = formattedDate;
-                
-                // Reset tanggal selesai jika lebih awal dari tanggal mulai
-                if (tanggalSelesai.value && new Date(tanggalSelesai.value) <= new Date(tanggalMulai.value)) {
-                    tanggalSelesai.value = formattedDate;
-                }
+    tanggalMulai.addEventListener('change', function() {
+        // Set minimum tanggal selesai = tanggal mulai + 1 hari
+        if (tanggalMulai.value) {
+            const nextDay = new Date(tanggalMulai.value);
+            nextDay.setDate(nextDay.getDate() + 1);
+            const formattedDate = nextDay.toISOString().split('T')[0];
+            tanggalSelesai.min = formattedDate;
+            
+            // Reset tanggal selesai jika lebih awal dari tanggal mulai
+            if (tanggalSelesai.value && new Date(tanggalSelesai.value) <= new Date(tanggalMulai.value)) {
+                tanggalSelesai.value = formattedDate;
             }
-        });
+        }
+    });
     }
 });
 </script>

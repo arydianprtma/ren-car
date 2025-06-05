@@ -20,7 +20,8 @@
                 <div>
                     <h3 class="text-xl font-bold mb-4">Hubungi Kami</h3>
                     <ul class="text-gray-300">
-                        <li class="mb-2"><i class="fas fa-map-marker-alt mr-2"></i> Jl. Contoh No. 123, Jakarta</li>
+                        <li class="mb-2"><i class="fas fa-map-marker-alt mr-2"></i>Jl. Letjend Pol. Soemarto No.127, Watumas, 
+                        Purwanegara, Kec. Purwokerto Utara, Kabupaten Banyumas, Jawa Tengah 53127</li>
                         <li class="mb-2"><i class="fas fa-phone mr-2"></i> +62 123-4567-8901</li>
                         <li class="mb-2"><i class="fas fa-envelope mr-2"></i> info@rentalmobil.com</li>
                     </ul>

@@ -2,8 +2,15 @@
 /**
  * File untuk memproses pembayaran melalui Midtrans
  */
-require_once __DIR__ . '/includes/header.php';
+// Load config dan database langsung dari root
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/midtrans/config.php';
+
+// Mulai session jika belum dimulai
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Periksa apakah user sudah login
 if (!isset($_SESSION['user_id'])) {
@@ -186,10 +193,101 @@ try {
     echo "<script>window.location.href = '" . USER_URL . "pemesanan_detail.php?kode=" . $kode_pemesanan . "';</script>";
     exit;
 }
-?>
 
-<!-- Midtrans Snap -->
-<script src="<?= MIDTRANS_SNAP_URL ?>" data-client-key="<?= MIDTRANS_CLIENT_KEY ?>"></script>
+// Tidak lagi menggunakan include header, sebagai gantinya kita buat HTML sendiri
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran - Rental Mobil</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Midtrans Snap -->
+    <script src="<?= MIDTRANS_SNAP_URL ?>" data-client-key="<?= MIDTRANS_CLIENT_KEY ?>"></script>
+    <!-- Additional Styles -->
+    <style>
+        /* Dropdown styling */
+        .dropdown-menu {
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s, transform 0.3s;
+            visibility: hidden;
+        }
+        
+        .dropdown-menu.show {
+            display: block !important;
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+            visibility: visible !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <a href="<?= USER_URL ?>" class="flex items-center">
+                        <i class="fas fa-car-side text-blue-600 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold text-blue-600">Rental Mobil</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="<?= USER_URL ?>" class="text-gray-700 hover:text-blue-500 transition duration-300">Beranda</a>
+                    <a href="<?= USER_URL ?>mobil.php" class="text-gray-700 hover:text-blue-500 transition duration-300">Mobil</a>
+                    <a href="<?= USER_URL ?>tentang.php" class="text-gray-700 hover:text-blue-500 transition duration-300">Tentang Kami</a>
+                    <a href="<?= USER_URL ?>kontak.php" class="text-gray-700 hover:text-blue-500 transition duration-300">Kontak</a>
+                    
+                    <?php if(isLoggedIn()): ?>
+                        <div class="relative dropdown">
+                            <button id="userDropdown" class="flex items-center text-gray-700 hover:text-blue-500 transition px-3 py-1 rounded-full border border-transparent hover:border-blue-100 hover:bg-blue-50">
+                                <i class="fas fa-user-circle text-blue-500 mr-2"></i>
+                                <span class="mr-1"><?= $_SESSION['user_nama'] ?? 'User' ?></span>
+                                <svg class="h-4 w-4 fill-current text-gray-500 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                                </svg>
+                            </button>
+                            <div id="userMenu" class="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-100">
+                                <a href="<?= USER_URL ?>profil.php" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
+                                    <i class="fas fa-user-edit mr-2"></i> Profil
+                                </a>
+                                <a href="<?= USER_URL ?>pesanan.php" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
+                                    <i class="fas fa-shopping-bag mr-2"></i> Pesanan Saya
+                                </a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="<?= USER_URL ?>logout.php" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-500 hover:text-white">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                                </a>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <a href="<?= USER_URL ?>login.php" class="text-gray-700 hover:text-blue-500 transition duration-300">Login</a>
+                        <a href="<?= USER_URL ?>register.php" class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg">Daftar</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <?php if(isset($_SESSION['flash_message'])): ?>
+    <div class="container mx-auto px-6 py-3">
+        <div class="bg-<?= $_SESSION['flash_type'] ?? 'green' ?>-100 border border-<?= $_SESSION['flash_type'] ?? 'green' ?>-400 text-<?= $_SESSION['flash_type'] ?? 'green' ?>-700 px-4 py-3 rounded-lg relative flex items-center" role="alert">
+            <i class="fas fa-<?= $_SESSION['flash_type'] == 'red' ? 'exclamation-circle' : 'check-circle' ?> mr-3"></i>
+            <span class="block sm:inline"><?= $_SESSION['flash_message'] ?></span>
+            <button class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
+                <svg class="fill-current h-6 w-6 text-<?= $_SESSION['flash_type'] ?? 'green' ?>-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </button>
+        </div>
+        <?php unset($_SESSION['flash_message'], $_SESSION['flash_type']); ?>
+    </div>
+    <?php endif; ?>
 
 <!-- Breadcrumb -->
 <div class="bg-gray-100 py-3">
@@ -269,6 +367,73 @@ try {
     </div>
 </section>
 
+<!-- Footer -->
+<footer class="bg-gray-800 text-white py-8 mt-auto">
+    <div class="container mx-auto px-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">Rental Mobil</h3>
+                <p class="text-sm text-gray-400 mb-4">
+                    Kami menyediakan layanan rental mobil terbaik dengan harga terjangkau dan armada berkualitas.
+                </p>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div>
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">Layanan</h3>
+                <ul class="text-sm space-y-2">
+                    <li><a href="<?= USER_URL ?>mobil.php" class="text-gray-400 hover:text-white transition">Sewa Mobil</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition">Sewa dengan Sopir</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition">Sewa Jangka Panjang</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition">Antar Jemput</a></li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">Tautan</h3>
+                <ul class="text-sm space-y-2">
+                    <li><a href="<?= USER_URL ?>" class="text-gray-400 hover:text-white transition">Beranda</a></li>
+                    <li><a href="<?= USER_URL ?>tentang.php" class="text-gray-400 hover:text-white transition">Tentang Kami</a></li>
+                    <li><a href="<?= USER_URL ?>kontak.php" class="text-gray-400 hover:text-white transition">Kontak</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition">Syarat & Ketentuan</a></li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">Kontak Kami</h3>
+                <ul class="text-sm space-y-2">
+                    <li class="flex items-start">
+                        <i class="fas fa-map-marker-alt text-blue-400 mt-1 mr-2"></i>
+                        <span class="text-gray-400">Jl. Contoh No. 123, Kota, Kode Pos 12345</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-phone text-blue-400 mt-1 mr-2"></i>
+                        <span class="text-gray-400">+62 123 4567 890</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-envelope text-blue-400 mt-1 mr-2"></i>
+                        <span class="text-gray-400">info@rentalmobil.com</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-700 mt-8 pt-6 text-sm text-gray-500 text-center">
+            <p>&copy; <?= date('Y') ?> Rental Mobil. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
 <script>
     // Tunggu sampai dokumen benar-benar dimuat
     document.addEventListener('DOMContentLoaded', function() {
@@ -299,7 +464,25 @@ try {
                 }
             });
         });
+        
+        // Toggle untuk dropdown menu
+        const userDropdown = document.getElementById('userDropdown');
+        const userMenu = document.getElementById('userMenu');
+        
+        if (userDropdown && userMenu) {
+            userDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userMenu.classList.toggle('show');
+            });
+            
+            // Tutup dropdown saat klik di luar
+            document.addEventListener('click', function(e) {
+                if (userMenu.classList.contains('show') && !userMenu.contains(e.target) && e.target !== userDropdown) {
+                    userMenu.classList.remove('show');
+                }
+            });
+        }
     });
 </script>
-
-<?php require_once __DIR__ . '/includes/footer.php'; ?> 
+</body>
+</html> 

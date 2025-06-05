@@ -14,8 +14,15 @@ require_once __DIR__ . '/../../classes/Notification.php';
 // Class Database ada di config/database.php, bukan di classes/Database.php
 require_once __DIR__ . '/../../config/database.php';
 
-// Inisialisasi variabel unreadCount
+// Inisialisasi variabel untuk notifikasi
 $unreadCount = 0;
+$notificationsByCategory = [
+    'user_baru' => 0,
+    'pesanan_baru' => 0,
+    'pembayaran' => 0,
+    'pengembalian' => 0,
+    'sistem' => 0
+];
 
 try {
     $database = new Database();
@@ -30,7 +37,25 @@ try {
     
     // Pastikan metode tersedia dan admin sudah login
     if (method_exists($notif, 'getUnreadAdminNotificationsCount') && isset($_SESSION['admin_id'])) {
-        $unreadCount = $notif->getUnreadAdminNotificationsCount();
+        $unreadCount = $notif->countUnreadNotifications($_SESSION['admin_id']);
+        
+        // Ambil jumlah notifikasi per kategori
+        $stmt = $conn->prepare("
+            SELECT tipe, COUNT(*) as count 
+            FROM notifikasi 
+            WHERE user_id = :user_id AND status = 'belum_dibaca'
+            GROUP BY tipe
+        ");
+        $stmt->bindParam(':user_id', $_SESSION['admin_id']);
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Isi array notificationsByCategory dengan hasil query
+        foreach ($results as $row) {
+            if (isset($notificationsByCategory[$row['tipe']])) {
+                $notificationsByCategory[$row['tipe']] = (int)$row['count'];
+            }
+        }
     }
 } catch (Exception $e) {
     // Log error dan tetapkan unreadCount ke 0
@@ -292,10 +317,23 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
             }
         }
         
+        /* Tablet devices */
+        @media (max-width: 768px) {
+            #notification-dropdown-menu {
+                position: fixed !important;
+                top: 60px !important;
+                left: 1rem !important;
+                right: 1rem !important;
+                width: auto !important;
+                max-width: none !important;
+                transform: none !important;
+            }
+        }
+        
         /* Smaller mobile devices */
         @media (max-width: 576px) {
             .content-wrapper {
-                padding: 60px 0.5rem 0.5rem 0.5rem;
+                padding: 60px 0.75rem 0.75rem 0.75rem;
             }
             
             .user-panel-img {
@@ -323,6 +361,47 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
             
             .content-wrapper {
                 padding-top: 56px;
+            }
+            
+            /* Dropdown responsive untuk mobile */
+            #notification-dropdown-menu {
+                position: fixed !important;
+                top: 56px !important;
+                left: 0.5rem !important;
+                right: 0.5rem !important;
+                width: auto !important;
+                max-width: none !important;
+                transform: none !important;
+            }
+            
+            #profile-dropdown-menu {
+                right: 0.5rem !important;
+                min-width: 180px;
+            }
+            
+            /* Adjust notification list height for mobile */
+            #notification-dropdown-menu .max-h-96 {
+                max-height: 60vh;
+            }
+            
+            /* Ensure category filter is visible on mobile */
+            .category-filter {
+                flex-shrink: 0;
+                min-width: fit-content;
+            }
+            
+            /* Better spacing for mobile tables */
+            .main-container {
+                padding: 0;
+            }
+            
+            /* Responsive table handling */
+            .overflow-x-auto {
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table {
+                font-size: 0.875rem;
             }
         }
         
@@ -392,8 +471,12 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                     <a href="<?= ADMIN_URL ?>pemesanan/index.php" class="nav-link <?= $active_menu === 'pemesanan' ? 'active' : '' ?>">
                         <i class="fas fa-clipboard-list nav-icon"></i>
                         <span>Pemesanan</span>
-                        <?php if ($unreadCount > 0): ?>
-                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full"><?= $unreadCount ?></span>
+                        <?php 
+                        // Jumlah notifikasi pemesanan dan pembayaran
+                        $pemesananCount = $notificationsByCategory['pesanan_baru'] + $notificationsByCategory['pembayaran']; 
+                        if ($pemesananCount > 0): 
+                        ?>
+                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full"><?= $pemesananCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
@@ -406,12 +489,26 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                     <a href="<?= ADMIN_URL ?>pengembalian/index.php" class="nav-link <?= $active_menu === 'pengembalian' ? 'active' : '' ?>">
                         <i class="fas fa-undo nav-icon"></i>
                         <span>Pengembalian</span>
+                        <?php 
+                        // Jumlah notifikasi pengembalian
+                        $pengembalianCount = $notificationsByCategory['pengembalian']; 
+                        if ($pengembalianCount > 0): 
+                        ?>
+                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full"><?= $pengembalianCount ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <li>
                     <a href="<?= ADMIN_URL ?>user/index.php" class="nav-link <?= $active_menu === 'user' ? 'active' : '' ?>">
                         <i class="fas fa-users nav-icon"></i>
                         <span>Manajemen User</span>
+                        <?php 
+                        // Jumlah notifikasi user baru
+                        $userCount = $notificationsByCategory['user_baru']; 
+                        if ($userCount > 0): 
+                        ?>
+                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full"><?= $userCount ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <li>
@@ -469,7 +566,7 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                         </span>
                         <?php endif; ?>
                     </a>
-                    <div id="notification-dropdown-menu" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-md shadow-lg z-50 transition-all duration-300">
+                    <div id="notification-dropdown-menu" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-md shadow-lg z-50 transition-all duration-300">
                         <div class="p-4 border-b border-gray-200">
                             <div class="flex justify-between items-center">
                                 <h3 class="text-lg font-semibold text-gray-800">Notifikasi</h3>
@@ -479,12 +576,12 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                             </div>
                         </div>
                         <div class="p-2 border-b border-gray-100 overflow-x-auto">
-                            <div class="flex space-x-2 pb-1">
-                                <button class="category-filter active px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200" data-category="all">Semua</button>
-                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200" data-category="user_baru">User Baru</button>
-                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200" data-category="pesanan_baru">Pemesanan</button>
-                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200" data-category="pembayaran">Pembayaran</button>
-                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200" data-category="pengembalian">Pengembalian</button>
+                            <div class="flex space-x-2 pb-1 min-w-max">
+                                <button class="category-filter active px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 whitespace-nowrap" data-category="all">Semua</button>
+                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap" data-category="user_baru">User</button>
+                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap" data-category="pesanan_baru">Pesan</button>
+                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap" data-category="pembayaran">Bayar</button>
+                                <button class="category-filter px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap" data-category="pengembalian">Kembali</button>
                             </div>
                         </div>
                         <div id="notification-list" class="max-h-96 overflow-y-auto p-2">
@@ -507,7 +604,7 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                             <i class="fas fa-chevron-down text-xs text-white"></i>
                         </button>
                     </div>
-                    <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 transition-all duration-300">
+                    <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-48 sm:w-48 bg-white rounded-md shadow-lg z-50 transition-all duration-300">
                         <div class="py-1">
                             <a href="<?= ADMIN_URL ?>profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-user-circle mr-2"></i> Profil
@@ -589,7 +686,45 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                 sidebarOverlay.classList.remove('show');
                 document.body.classList.remove('overflow-hidden');
             }
+            
+            // Reset dropdown position on resize
+            const notificationDropdown = document.getElementById('notification-dropdown-menu');
+            if (notificationDropdown && !notificationDropdown.classList.contains('hidden')) {
+                adjustDropdownPosition();
+            }
         });
+        
+        // Function to adjust dropdown position based on screen size
+        function adjustDropdownPosition() {
+            const notificationDropdown = document.getElementById('notification-dropdown-menu');
+            if (!notificationDropdown) return;
+            
+            if (window.innerWidth <= 576) {
+                // Small mobile: fixed position, full width with margins
+                notificationDropdown.style.position = 'fixed';
+                notificationDropdown.style.top = '56px';
+                notificationDropdown.style.left = '0.5rem';
+                notificationDropdown.style.right = '0.5rem';
+                notificationDropdown.style.width = 'auto';
+                notificationDropdown.style.transform = 'none';
+            } else if (window.innerWidth <= 768) {
+                // Tablet: fixed position with more space
+                notificationDropdown.style.position = 'fixed';
+                notificationDropdown.style.top = '60px';
+                notificationDropdown.style.left = '1rem';
+                notificationDropdown.style.right = '1rem';
+                notificationDropdown.style.width = 'auto';
+                notificationDropdown.style.transform = 'none';
+            } else {
+                // Desktop: normal absolute positioning
+                notificationDropdown.style.position = 'absolute';
+                notificationDropdown.style.top = '';
+                notificationDropdown.style.left = '';
+                notificationDropdown.style.right = '0';
+                notificationDropdown.style.width = '';
+                notificationDropdown.style.transform = '';
+            }
+        }
         
         // === DROPDOWN MENUS ===
         // Fungsi untuk mengelola dropdown
@@ -646,8 +781,9 @@ if (strpos($current_path, '/index.php') !== false && strpos($current_path, '/mob
                         target.classList.remove('hidden');
                         this.setAttribute('aria-expanded', 'true');
                         
-                        // Jika ini dropdown notifikasi, muat data notifikasi
+                        // Adjust dropdown position for notification dropdown
                         if (targetId === 'notification-dropdown-menu') {
+                            adjustDropdownPosition();
                             loadNotifications();
                         }
                     }

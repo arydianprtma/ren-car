@@ -26,23 +26,52 @@ if (isset($_POST['fix_database'])) {
         // Mulai transaksi
         $conn->beginTransaction();
         
-        // 1. Update status_pemesanan yang NULL menjadi 'menunggu'
+        // 1. Cek dan perbaiki struktur tabel pemesanan
+        $stmt = $conn->prepare("SHOW COLUMNS FROM pemesanan WHERE Field = 'status_pemesanan'");
+        $stmt->execute();
+        $columnExists = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$columnExists) {
+            // Tambahkan kolom status_pemesanan jika belum ada
+            $conn->exec("ALTER TABLE pemesanan ADD COLUMN status_pemesanan ENUM('menunggu', 'dibayar', 'dikonfirmasi', 'berjalan', 'pending_return', 'selesai', 'dibatalkan') DEFAULT 'menunggu'");
+        } else {
+            // Pastikan kolom status_pemesanan menggunakan ENUM yang benar
+            $conn->exec("ALTER TABLE pemesanan MODIFY status_pemesanan ENUM('menunggu', 'dibayar', 'dikonfirmasi', 'berjalan', 'pending_return', 'selesai', 'dibatalkan') DEFAULT 'menunggu'");
+        }
+        
+        // 2. Update data yang bermasalah terlebih dahulu - normalisasi nilai yang tidak valid
+        $stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'menunggu' WHERE status_pemesanan NOT IN ('menunggu', 'dibayar', 'dikonfirmasi', 'berjalan', 'pending_return', 'selesai', 'dibatalkan') OR status_pemesanan IS NULL OR status_pemesanan = ''");
+        $stmt->execute();
+        $invalidStatusFixed = $stmt->rowCount();
+        
+        // 3. Update status_pemesanan yang NULL atau kosong menjadi 'menunggu'
         $stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'menunggu' WHERE status_pemesanan IS NULL OR status_pemesanan = ''");
         $stmt->execute();
         $nullStatusFixed = $stmt->rowCount();
         
-        // 2. Periksa pemesanan dengan metode_pembayaran yang sudah dipilih tapi status masih 'menunggu'
+        // 4. Periksa pemesanan dengan metode_pembayaran yang sudah dipilih tapi status masih 'menunggu'
         $stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'dibayar' 
                                WHERE metode_pembayaran IS NOT NULL AND metode_pembayaran != '' 
                                AND status_pemesanan = 'menunggu'");
         $stmt->execute();
         $paymentMethodFixed = $stmt->rowCount();
         
+        // 5. Pastikan kolom metode_pembayaran juga menggunakan ENUM yang benar
+        $stmt = $conn->prepare("SHOW COLUMNS FROM pemesanan WHERE Field = 'metode_pembayaran'");
+        $stmt->execute();
+        $paymentColumnExists = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($paymentColumnExists) {
+            // Update nilai metode_pembayaran yang tidak valid
+            $conn->exec("UPDATE pemesanan SET metode_pembayaran = NULL WHERE metode_pembayaran NOT IN ('transfer_bank', 'tunai', 'e-wallet') AND metode_pembayaran IS NOT NULL AND metode_pembayaran != ''");
+            $conn->exec("ALTER TABLE pemesanan MODIFY metode_pembayaran ENUM('transfer_bank', 'tunai', 'e-wallet') DEFAULT NULL");
+        }
+        
         // Commit transaksi
         $conn->commit();
         
         // Set pesan berhasil
-        $totalFixed = $nullStatusFixed + $paymentMethodFixed;
+        $totalFixed = $invalidStatusFixed + $nullStatusFixed + $paymentMethodFixed;
         $isSuccess = true;
         
     } catch (PDOException $e) {

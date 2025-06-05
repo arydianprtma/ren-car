@@ -8,6 +8,19 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
+// Start session if not started yet
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Cek apakah perlu redirect dari request sebelumnya
+if (isset($_SESSION['redirect'])) {
+    $redirect_url = $_SESSION['redirect'];
+    unset($_SESSION['redirect']);
+    header("Location: " . $redirect_url);
+    exit;
+}
+
 // Variabel untuk JavaScript redirect
 $js_redirect = "";
 $redirect_url = "";
@@ -30,16 +43,16 @@ try {
     $stmt = $conn->prepare("SELECT m.*, k.nama_kategori 
                             FROM mobil m 
                             LEFT JOIN kategori_mobil k ON m.kategori_id = k.id 
-                            WHERE m.id = ? AND m.status = 'tersedia'");
+                            WHERE m.id = ?");
     $stmt->execute([$id_mobil]);
     $mobil = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Jika mobil tidak ditemukan atau tidak tersedia, redirect ke halaman mobil
+    // Jika mobil tidak ditemukan, gunakan session untuk error dan redirect sebelum output
     if (!$mobil) {
-        $_SESSION['flash_message'] = "Mobil tidak ditemukan atau tidak tersedia";
+        $_SESSION['flash_message'] = "Mobil tidak ditemukan";
         $_SESSION['flash_type'] = "red";
-        header("Location: " . USER_URL . "mobil.php");
-        exit;
+        $_SESSION['redirect'] = USER_URL . "mobil.php";
+        // Kita akan melakukan redirect di awal file
     }
 
     // Ambil fitur mobil dari data JSON yang tersimpan di database
@@ -75,11 +88,28 @@ try {
     // Ambil review untuk mobil ini (future feature)
     $reviews = [];
 
+    // Ambil informasi pemesanan jika mobil sedang disewa
+    $tanggalPengembalian = null;
+    if ($mobil['status'] == 'disewa') {
+        $stmt = $conn->prepare("SELECT tanggal_selesai FROM pemesanan 
+                               WHERE mobil_id = ? 
+                               AND status_pemesanan NOT IN ('dibatalkan', 'selesai') 
+                               AND tanggal_selesai >= CURRENT_DATE()
+                               ORDER BY tanggal_selesai ASC LIMIT 1");
+        $stmt->execute([$id_mobil]);
+        $pemesanan = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($pemesanan) {
+            $tanggalPengembalian = $pemesanan['tanggal_selesai'];
+        }
+    }
+
 } catch (PDOException $e) {
-    // Handle error
+    // Handle error dengan menggunakan session untuk redirect
     $_SESSION['flash_message'] = "Terjadi kesalahan: " . $e->getMessage();
     $_SESSION['flash_type'] = "red";
-    header("Location: " . USER_URL . "mobil.php");
+    $_SESSION['redirect'] = USER_URL . "mobil.php";
+    // Kita akan menggunakan redirect di awal file pada request berikutnya
+    echo "<script>window.location.href = '" . USER_URL . "mobil.php';</script>";
     exit;
 }
 
@@ -186,6 +216,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
         }
     }
 }
+
+// Proses form pemesanan jika ada POST request dan user sudah login dan mobil tersedia
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id']) && $mobil['status'] == 'tersedia') {
+    // Ambil data form
+    $tanggal_mulai = $_POST['tanggal_mulai'] ?? '';
+    $tanggal_selesai = $_POST['tanggal_selesai'] ?? '';
+    $catatan = trim($_POST['catatan'] ?? '');
+    $user_id = $_SESSION['user_id'];
+    $total_hari = 0;
+    
+    // Validasi input
+    if (empty($tanggal_mulai)) {
+        $errors['tanggal_mulai'] = 'Tanggal mulai sewa harus diisi';
+    } elseif (strtotime($tanggal_mulai) < strtotime(date('Y-m-d'))) {
+        $errors['tanggal_mulai'] = 'Tanggal mulai sewa tidak boleh kurang dari hari ini';
+    }
+    
+    if (empty($tanggal_selesai)) {
+        $errors['tanggal_selesai'] = 'Tanggal selesai sewa harus diisi';
+    } elseif (strtotime($tanggal_selesai) <= strtotime($tanggal_mulai)) {
+        $errors['tanggal_selesai'] = 'Tanggal selesai sewa harus lebih besar dari tanggal mulai';
+    } else {
+        // Hitung total hari sewa
+        $total_hari = ceil((strtotime($tanggal_selesai) - strtotime($tanggal_mulai)) / (60 * 60 * 24));
+    }
+    
+    // Verifikasi mobil masih tersedia
+    if (empty($errors)) {
+        $stmt = $conn->prepare("SELECT status FROM mobil WHERE id = ?");
+        $stmt->execute([$id_mobil]);
+        $currentStatus = $stmt->fetchColumn();
+        
+        if ($currentStatus != 'tersedia') {
+            $errors['status'] = 'Maaf, mobil ini baru saja disewa oleh orang lain. Silakan pilih mobil lain.';
+        }
+    }
+    
+    // Periksa ketersediaan mobil pada tanggal yang dipilih
+    if (empty($errors)) {
+        $stmt = $conn->prepare("SELECT id FROM pemesanan 
+                                WHERE mobil_id = ? 
+                                AND status_pemesanan NOT IN ('dibatalkan', 'selesai') 
+                                AND ((tanggal_mulai BETWEEN ? AND ?) 
+                                OR (tanggal_selesai BETWEEN ? AND ?) 
+                                OR (tanggal_mulai <= ? AND tanggal_selesai >= ?))");
+        $stmt->execute([
+            $id_mobil, 
+            $tanggal_mulai, $tanggal_selesai, 
+            $tanggal_mulai, $tanggal_selesai, 
+            $tanggal_mulai, $tanggal_selesai
+        ]);
+        
+        if ($stmt->rowCount() > 0) {
+            $errors['tanggal'] = 'Mobil tidak tersedia pada tanggal yang dipilih. Silakan pilih tanggal lain.';
+        }
+    }
+}
 ?>
 
 <!-- Breadcrumb -->
@@ -254,9 +341,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h1>
                     
                     <div class="flex flex-wrap items-center gap-2 mb-4">
-                        <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                            <?= ucfirst($mobil['status']) ?>
-                        </div>
+                        <?php if ($mobil['status'] == 'tersedia'): ?>
+                            <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                <i class="fas fa-check-circle mr-1"></i> <?= ucfirst($mobil['status']) ?>
+                            </div>
+                        <?php elseif ($mobil['status'] == 'disewa'): ?>
+                            <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                <i class="fas fa-clock mr-1"></i> Sedang Disewa
+                            </div>
+                            <?php if ($tanggalPengembalian): ?>
+                                <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                    <i class="fas fa-calendar-alt mr-1"></i> Tersedia Kembali: <?= date('d F Y', strtotime($tanggalPengembalian)) ?>
+                                </div>
+                            <?php endif; ?>
+                        <?php elseif ($mobil['status'] == 'pemeliharaan'): ?>
+                            <div class="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                <i class="fas fa-tools mr-1"></i> Dalam Pemeliharaan
+                            </div>
+                        <?php endif; ?>
                         <div class="text-gray-600 text-xs sm:text-sm">
                             Plat Nomor: <span class="font-semibold"><?= $mobil['nomor_plat'] ?></span>
                         </div>
@@ -282,6 +384,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                             </div>
                         </div>
                         
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                            <div>
+                                <p class="text-xs sm:text-sm text-gray-500">Warna</p>
+                                <p class="font-semibold"><?= ucfirst($mobil['warna']) ?></p>
+                            </div>
+                        </div>
+                        
                         <?php if (!empty($mobil['deskripsi'])): ?>
                             <div class="border-t border-gray-100 my-4 pt-4">
                                 <h3 class="text-lg font-semibold text-gray-800 mb-2">Deskripsi</h3>
@@ -304,7 +413,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
                         <i class="fas fa-calendar-alt mr-2 text-blue-600"></i> Form Pemesanan
                     </h3>
                     
-                    <?php if (isset($_SESSION['user_id'])): ?>
+                    <?php if ($mobil['status'] != 'tersedia'): ?>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                            <?php if ($mobil['status'] == 'disewa'): ?>
+                                <p class="text-yellow-700 mb-4">
+                                    <i class="fas fa-exclamation-circle mr-2"></i>
+                                    Mobil ini sedang disewa dan akan tersedia kembali pada: 
+                                    <span class="font-semibold"><?= $tanggalPengembalian ? date('d F Y', strtotime($tanggalPengembalian)) : 'tanggal yang belum ditentukan' ?></span>
+                                </p>
+                            <?php elseif ($mobil['status'] == 'pemeliharaan'): ?>
+                                <p class="text-yellow-700 mb-4">
+                                    <i class="fas fa-tools mr-2"></i>
+                                    Mobil ini sedang dalam pemeliharaan dan belum dapat disewa saat ini.
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                    <?php elseif (isset($_SESSION['user_id'])): ?>
                         <?php if (isset($errors['db'])): ?>
                             <div class="mb-4 bg-red-100 text-red-700 p-3 rounded-lg">
                                 <?= $errors['db'] ?>

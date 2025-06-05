@@ -24,7 +24,7 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $baseCountQuery = "SELECT COUNT(*) FROM pemesanan p 
                    JOIN users u ON p.user_id = u.id 
                    JOIN mobil m ON p.mobil_id = m.id 
-                   WHERE p.status_pemesanan = 'selesai'";
+                   WHERE p.status_pemesanan IN ('selesai', 'pending_return', 'berjalan')";
 
 // Query base untuk mengambil data
 $baseQuery = "SELECT p.*, 
@@ -33,7 +33,7 @@ $baseQuery = "SELECT p.*,
               FROM pemesanan p 
               JOIN users u ON p.user_id = u.id 
               JOIN mobil m ON p.mobil_id = m.id 
-              WHERE p.status_pemesanan = 'selesai'";
+              WHERE p.status_pemesanan IN ('selesai', 'pending_return', 'berjalan')";
 
 // Tambahkan filter jika ada
 if ($status_filter) {
@@ -112,55 +112,92 @@ if (isset($_POST['action']) && $_POST['action'] == 'complete_return' && isset($_
     try {
         $conn->beginTransaction();
         
+        // Periksa status pemesanan saat ini
+        $checkStatus = $conn->prepare("SELECT status_pemesanan, mobil_id FROM pemesanan WHERE id = :id");
+        $checkStatus->bindParam(':id', $pemesanan_id);
+        $checkStatus->execute();
+        $currentData = $checkStatus->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$currentData) {
+            throw new Exception("Pemesanan tidak ditemukan");
+        }
+        
         // Perbarui status pemesanan menjadi "selesai"
         $stmt = $conn->prepare("UPDATE pemesanan SET status_pemesanan = 'selesai' WHERE id = :id");
         $stmt->bindParam(':id', $pemesanan_id);
         $stmt->execute();
         
-        // Cek jika ada denda
-        $stmt = $conn->prepare("SELECT *, DATEDIFF(NOW(), DATE_ADD(tanggal_mulai, INTERVAL 7 DAY)) as hari_terlambat 
-                               FROM pemesanan 
-                               WHERE id = :id AND NOW() > DATE_ADD(tanggal_mulai, INTERVAL 7 DAY)");
-        $stmt->bindParam(':id', $pemesanan_id);
-        $stmt->execute();
-        $pemesanan = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Cek apakah sudah ada entry di tabel pengembalian
+        $checkPengembalian = $conn->prepare("SELECT id FROM pengembalian WHERE pemesanan_id = :pemesanan_id");
+        $checkPengembalian->bindParam(':pemesanan_id', $pemesanan_id);
+        $checkPengembalian->execute();
         
-        // Menghitung denda jika terlambat
-        if ($pemesanan['hari_terlambat'] > 0) {
-            // Ambil harga mobil per hari
-            $stmt = $conn->prepare("SELECT harga_sewa_per_hari FROM mobil WHERE id = :mobil_id");
-            $stmt->bindParam(':mobil_id', $pemesanan['mobil_id']);
-            $stmt->execute();
-            $mobil = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // Hitung denda (50% dari harga sewa per hari terlambat)
-            $dendaPerHari = $mobil['harga_sewa_per_hari'] * 0.5;
-            $totalDenda = $dendaPerHari * $pemesanan['hari_terlambat'];
-            
-            // Update denda di database
-            $stmt = $conn->prepare("UPDATE pemesanan SET denda = :denda WHERE id = :id");
-            $stmt->bindParam(':denda', $totalDenda);
+        // Jika belum ada entry pengembalian, buat baru
+        if ($checkPengembalian->rowCount() === 0) {
+            // Cek jika ada denda
+            $stmt = $conn->prepare("SELECT *, DATEDIFF(NOW(), tanggal_selesai) as hari_terlambat 
+                                   FROM pemesanan 
+                                   WHERE id = :id AND NOW() > tanggal_selesai");
             $stmt->bindParam(':id', $pemesanan_id);
             $stmt->execute();
+            $pemesanan = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Menghitung denda jika terlambat
+            $totalDenda = 0;
+            if ($pemesanan && $pemesanan['hari_terlambat'] > 0) {
+                // Ambil harga mobil per hari
+                $stmt = $conn->prepare("SELECT harga_sewa_per_hari FROM mobil WHERE id = :mobil_id");
+                $stmt->bindParam(':mobil_id', $pemesanan['mobil_id']);
+                $stmt->execute();
+                $mobil = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Hitung denda (50% dari harga sewa per hari terlambat)
+                $dendaPerHari = $mobil['harga_sewa_per_hari'] * 0.5;
+                $totalDenda = $dendaPerHari * $pemesanan['hari_terlambat'];
+            }
+            
+            // Buat entry pengembalian baru
+            $createPengembalian = $conn->prepare("INSERT INTO pengembalian 
+                                               (pemesanan_id, tanggal_pengembalian, kondisi_mobil, denda, catatan, created_at) 
+                                               VALUES (:pemesanan_id, NOW(), 'Diperiksa oleh admin', :denda, 'Diproses oleh admin', NOW())");
+            $createPengembalian->bindParam(':pemesanan_id', $pemesanan_id);
+            $createPengembalian->bindParam(':denda', $totalDenda);
+            $createPengembalian->execute();
+            
+            // Update denda di pemesanan
+            if ($totalDenda > 0) {
+                $updateDenda = $conn->prepare("UPDATE pemesanan SET denda = :denda WHERE id = :id");
+                $updateDenda->bindParam(':denda', $totalDenda);
+                $updateDenda->bindParam(':id', $pemesanan_id);
+                $updateDenda->execute();
+            }
         }
         
         // Update status mobil menjadi tersedia
-        $stmt = $conn->prepare("UPDATE mobil SET status = 'tersedia' WHERE id = (SELECT mobil_id FROM pemesanan WHERE id = :id)");
-        $stmt->bindParam(':id', $pemesanan_id);
+        $stmt = $conn->prepare("UPDATE mobil SET status = 'tersedia' WHERE id = :mobil_id");
+        $stmt->bindParam(':mobil_id', $currentData['mobil_id']);
         $stmt->execute();
         
         $conn->commit();
         
-        // Kirim notifikasi ke admin tentang pengembalian
+        // Kirim notifikasi ke pengguna tentang pengembalian berhasil
         require_once '../../classes/Notification.php';
         $notif = new Notification($conn);
-        $notif->createAdminNotification(
-            "Pengembalian Mobil", 
-            "Mobil telah dikembalikan untuk pemesanan #{$pemesanan_id}.", 
-            "pengembalian", 
-            $pemesanan_id, 
-            "pemesanan"
-        );
+        
+        // Ambil user_id
+        $getUserId = $conn->prepare("SELECT user_id FROM pemesanan WHERE id = :id");
+        $getUserId->bindParam(':id', $pemesanan_id);
+        $getUserId->execute();
+        $userData = $getUserId->fetch(PDO::FETCH_ASSOC);
+        
+        if ($userData) {
+            $notif->sendNotification(
+                $userData['user_id'],
+                "Pengembalian Mobil Berhasil",
+                "Pengembalian mobil Anda telah dikonfirmasi oleh admin.",
+                "pengembalian"
+            );
+        }
         
         // Set flash message
         setFlashMessage("Pengembalian berhasil diproses", "green");
@@ -248,9 +285,9 @@ require_once '../includes/header.php';
                 <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select id="status" name="status" class="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Semua Status</option>
+                    <option value="berjalan" <?= $status_filter === 'berjalan' ? 'selected' : '' ?>>Sedang Disewa</option>
+                    <option value="pending_return" <?= $status_filter === 'pending_return' ? 'selected' : '' ?>>Menunggu Konfirmasi Pengembalian</option>
                     <option value="selesai" <?= $status_filter === 'selesai' ? 'selected' : '' ?>>Selesai</option>
-                    <option value="dibayar" <?= $status_filter === 'dibayar' ? 'selected' : '' ?>>Dibayar</option>
-                    <option value="menunggu" <?= $status_filter === 'menunggu' ? 'selected' : '' ?>>Menunggu</option>
                 </select>
             </div>
             <div class="flex items-center space-x-2">
@@ -303,18 +340,29 @@ require_once '../includes/header.php';
                                 
                                 // Status badge class
                                 $statusClass = '';
+                                $statusIcon = '';
+                                $statusText = '';
+                                
                                 switch ($item['status_pemesanan']) {
+                                    case 'berjalan':
+                                        $statusClass = 'bg-blue-100 text-blue-800';
+                                        $statusIcon = 'fa-car';
+                                        $statusText = 'Sedang Disewa';
+                                        break;
+                                    case 'pending_return':
+                                        $statusClass = 'bg-indigo-100 text-indigo-800';
+                                        $statusIcon = 'fa-hourglass-half';
+                                        $statusText = 'Menunggu Konfirmasi Pengembalian';
+                                        break;
                                     case 'selesai':
                                         $statusClass = 'bg-green-100 text-green-800';
-                                        break;
-                                    case 'dibayar':
-                                        $statusClass = 'bg-blue-100 text-blue-800';
-                                        break;
-                                    case 'menunggu':
-                                        $statusClass = 'bg-yellow-100 text-yellow-800';
+                                        $statusIcon = 'fa-check-circle';
+                                        $statusText = 'Selesai';
                                         break;
                                     default:
                                         $statusClass = 'bg-gray-100 text-gray-800';
+                                        $statusIcon = 'fa-question-circle';
+                                        $statusText = ucfirst($item['status_pemesanan']);
                                 }
                             ?>
                             <tr class="<?= $terlambat ? 'bg-red-50' : '' ?>">
@@ -351,23 +399,38 @@ require_once '../includes/header.php';
                                     <?= $item['denda'] > 0 ? 'Rp ' . number_format($item['denda'], 0, ',', '.') : '-' ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?= $statusClass ?>">
-                                        <?= ucfirst($item['status_pemesanan']) ?>
-                                    </span>
+                                    <div class="flex items-center">
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full <?= $statusClass ?>">
+                                            <i class="fas <?= $statusIcon ?> mr-1"></i> <?= $statusText ?>
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <?php if ($item['status_pemesanan'] != 'selesai'): ?>
-                                        <form method="post" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menandai pengembalian ini sebagai selesai?')">
+                                    <div class="flex justify-end space-x-2">
+                                        <a href="<?= ADMIN_URL ?>pemesanan/detail.php?id=<?= $item['id'] ?>" class="text-blue-600 hover:text-blue-900" title="Lihat Detail">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        <?php if ($item['status_pemesanan'] === 'pending_return'): ?>
+                                        <form action="" method="post" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menyelesaikan pengembalian ini?');">
                                             <input type="hidden" name="action" value="complete_return">
                                             <input type="hidden" name="pemesanan_id" value="<?= $item['id'] ?>">
-                                            <button type="submit" class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                                <i class="fas fa-check mr-1"></i> Selesai
+                                            <button type="submit" class="text-green-600 hover:text-green-900" title="Konfirmasi Pengembalian">
+                                                <i class="fas fa-check-circle"></i>
                                             </button>
                                         </form>
-                                    <?php endif; ?>
-                                    <a href="<?= ADMIN_URL ?>pemesanan/detail.php?id=<?= $item['id'] ?>" class="text-blue-600 hover:text-blue-900">
-                                        <i class="fas fa-eye mr-1"></i> Detail
-                                    </a>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($item['status_pemesanan'] === 'berjalan'): ?>
+                                        <form action="" method="post" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menandai mobil ini sebagai dikembalikan?');">
+                                            <input type="hidden" name="action" value="complete_return">
+                                            <input type="hidden" name="pemesanan_id" value="<?= $item['id'] ?>">
+                                            <button type="submit" class="text-green-600 hover:text-green-900" title="Tandai Sebagai Dikembalikan">
+                                                <i class="fas fa-car-side"></i>
+                                            </button>
+                                        </form>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

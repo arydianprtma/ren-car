@@ -10,10 +10,28 @@ if (ob_get_level() == 0) ob_start();
 require_once 'database.php';
 
 // Base URL Configuration
+// Untuk akses lokal (komputer sendiri)
 define('BASE_URL', 'http://localhost/Rental%20Mobil/');
+
+// Untuk akses melalui jaringan lokal (LAN/WiFi yang sama)
+// define('BASE_URL', 'http://192.168.18.116/Rental%20Mobil/');
+
+// Untuk akses melalui internet (ganti dengan IP publik atau domain)
+// Contoh jika menggunakan ngrok, cloudflare tunnel, atau layanan sejenis
+// define('BASE_URL', 'https://rentalmobil-nama-anda.ngrok.io/');
+// define('BASE_URL', 'https://rentalmobil.domain-anda.com/');
+
+// Atau dengan domain yang sudah terdaftar
+// define('BASE_URL', 'https://rentalmobil.com/');
+
 define('ADMIN_URL', BASE_URL . 'admin/');
 define('USER_URL', BASE_URL . 'user/');
 define('ASSETS_URL', BASE_URL . 'assets/');
+
+// Load Google Configuration if exists
+if (file_exists(__DIR__ . '/google_config.php')) {
+    require_once 'google_config.php';
+}
 
 // Session Configuration
 session_start();
@@ -85,9 +103,102 @@ function sanitize($input) {
     return htmlspecialchars(strip_tags(trim($input)));
 }
 
-// Check if user is logged in
+// Remember Me Functions
+function setRememberToken($userId, $token) {
+    try {
+        $db = new Database();
+        $conn = $db->getConnection();
+        
+        $expires = date('Y-m-d H:i:s', strtotime('+30 days')); // Token berlaku 30 hari
+        
+        $stmt = $conn->prepare("UPDATE users SET remember_token = :token, remember_token_expires = :expires WHERE id = :user_id");
+        $stmt->bindParam(':token', $token);
+        $stmt->bindParam(':expires', $expires);
+        $stmt->bindParam(':user_id', $userId);
+        
+        return $stmt->execute();
+    } catch (Exception $e) {
+        error_log("Error setting remember token: " . $e->getMessage());
+        return false;
+    }
+}
+
+function clearRememberToken($userId) {
+    try {
+        $db = new Database();
+        $conn = $db->getConnection();
+        
+        $stmt = $conn->prepare("UPDATE users SET remember_token = NULL, remember_token_expires = NULL WHERE id = :user_id");
+        $stmt->bindParam(':user_id', $userId);
+        
+        return $stmt->execute();
+    } catch (Exception $e) {
+        error_log("Error clearing remember token: " . $e->getMessage());
+        return false;
+    }
+}
+
+function verifyRememberToken($token) {
+    try {
+        $db = new Database();
+        $conn = $db->getConnection();
+        
+        $stmt = $conn->prepare("SELECT * FROM users WHERE remember_token = :token AND remember_token_expires > NOW() AND status = 'aktif'");
+        $stmt->bindParam(':token', $token);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        return false;
+    } catch (Exception $e) {
+        error_log("Error verifying remember token: " . $e->getMessage());
+        return false;
+    }
+}
+
+function autoLoginFromRememberToken() {
+    // Cek apakah sudah login
+    if (isset($_SESSION['user_id'])) {
+        return true;
+    }
+    
+    // Cek apakah ada remember token di cookie
+    if (!isset($_COOKIE['user_remember'])) {
+        return false;
+    }
+    
+    $token = $_COOKIE['user_remember'];
+    $user = verifyRememberToken($token);
+    
+    if ($user) {
+        // Set session untuk auto login
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_username'] = $user['username'];
+        $_SESSION['user_nama'] = $user['nama'];
+        $_SESSION['user_email'] = $user['email'];
+        
+        // Generate token baru untuk keamanan
+        $newToken = bin2hex(random_bytes(32));
+        setRememberToken($user['id'], $newToken);
+        setcookie('user_remember', $newToken, time() + (86400 * 30), '/'); // 30 hari
+        
+        return true;
+    } else {
+        // Token tidak valid, hapus cookie
+        setcookie('user_remember', '', time() - 3600, '/');
+        return false;
+    }
+}
+
+// Check if user is logged in (with auto-login from remember token)
 function isLoggedIn() {
-    return isset($_SESSION['user_id']);
+    if (isset($_SESSION['user_id'])) {
+        return true;
+    }
+    
+    // Coba auto login dari remember token
+    return autoLoginFromRememberToken();
 }
 
 // Check if admin is logged in

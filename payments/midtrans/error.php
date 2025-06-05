@@ -2,7 +2,14 @@
 /**
  * File untuk menangani redirect setelah terjadi error pembayaran
  */
-require_once __DIR__ . '/../../user/includes/header.php';
+// Load config dan database langsung dari root
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/database.php';
+
+// Mulai session jika belum dimulai
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Periksa apakah user sudah login
 if (!isset($_SESSION['user_id'])) {

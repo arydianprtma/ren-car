@@ -13,7 +13,7 @@ $conn = $db->getConnection();
 // Query untuk mobil terkait berdasarkan kategori yang sama
 $sql = "SELECT m.*, k.nama_kategori FROM mobil m 
         LEFT JOIN kategori_mobil k ON m.kategori_id = k.id 
-        WHERE m.status = 'tersedia' AND m.id != ? ";
+        WHERE m.id != ? ";
 
 $params = [$id_mobil];
 
@@ -35,7 +35,7 @@ try {
     if (empty($relatedCars)) {
         $stmt = $conn->prepare("SELECT m.*, k.nama_kategori FROM mobil m 
                                LEFT JOIN kategori_mobil k ON m.kategori_id = k.id 
-                               WHERE m.status = 'tersedia' AND m.id != ? 
+                               WHERE m.id != ? 
                                ORDER BY RAND() LIMIT 3");
         $stmt->execute([$id_mobil]);
         $relatedCars = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -51,18 +51,53 @@ if (empty($relatedCars)) {
     exit;
 }
 
+// Ambil informasi pemesanan untuk mobil yang sedang disewa
+$mobilDisewa = [];
+$sql = "SELECT mobil_id, tanggal_selesai 
+        FROM pemesanan 
+        WHERE status_pemesanan NOT IN ('dibatalkan', 'selesai') 
+        AND tanggal_selesai >= CURRENT_DATE()";
+$stmt = $conn->query($sql);
+$pemesananAktif = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Buat array untuk menyimpan tanggal pengembalian mobil
+foreach ($pemesananAktif as $pemesanan) {
+    $mobilDisewa[$pemesanan['mobil_id']] = $pemesanan['tanggal_selesai'];
+}
+
 // Tampilkan mobil terkait
 foreach ($relatedCars as $mobil): ?>
     <div class="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg border border-gray-100 hover:border-blue-100 group animate-fadeIn">
         <div class="h-48 bg-gray-200 relative overflow-hidden">
             <?php if (!empty($mobil['foto_mobil'])): ?>
-                <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                <img src="<?= ASSETS_URL ?>uploads/mobil/<?= $mobil['foto_mobil'] ?>" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 <?= ($mobil['status'] != 'tersedia') ? 'opacity-70' : '' ?>">
             <?php else: ?>
                 <img src="<?= ASSETS_URL ?>images/car-login.jpg" alt="<?= $mobil['merk'] ?> <?= $mobil['model'] ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             <?php endif; ?>
             <div class="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
                 <?= $mobil['nama_kategori'] ?? 'Uncategorized' ?>
             </div>
+            
+            <?php 
+            // Tampilkan status mobil jika tidak tersedia
+            if ($mobil['status'] != 'tersedia'): ?>
+                <div class="absolute top-0 left-0 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white px-4 py-1 m-3 rounded-full text-xs font-medium shadow-md">
+                    <?php if ($mobil['status'] == 'disewa'): ?>
+                        <i class="fas fa-clock mr-1"></i> Sedang Disewa
+                    <?php elseif ($mobil['status'] == 'pemeliharaan'): ?>
+                        <i class="fas fa-tools mr-1"></i> Dalam Pemeliharaan
+                    <?php endif; ?>
+                </div>
+                
+                <?php if (isset($mobilDisewa[$mobil['id']])): ?>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="bg-black bg-opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
+                            <i class="fas fa-calendar-alt mr-1"></i> Tersedia kembali pada: <br>
+                            <span class="text-center block mt-1"><?= date('d F Y', strtotime($mobilDisewa[$mobil['id']])) ?></span>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <div class="p-4">
             <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors"><?= $mobil['merk'] ?> <?= $mobil['model'] ?></h3>
@@ -74,7 +109,11 @@ foreach ($relatedCars as $mobil): ?>
                 <div class="text-blue-600 font-bold">
                     Rp <?= number_format($mobil['harga_sewa_per_hari'], 0, ',', '.') ?>
                 </div>
-                <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700 transition-all text-sm">Detail</a>
+                <?php if ($mobil['status'] == 'tersedia'): ?>
+                    <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700 transition-all text-sm">Detail</a>
+                <?php else: ?>
+                    <a href="detail-mobil.php?id=<?= $mobil['id'] ?>" class="bg-yellow-600 text-white px-4 py-1 rounded-lg hover:bg-yellow-700 transition-all text-sm">Lihat Detail</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
