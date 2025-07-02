@@ -14,7 +14,7 @@ require_once 'database.php';
 define('BASE_URL', 'http://localhost/Rental%20Mobil/');
 
 // Untuk akses melalui jaringan lokal (LAN/WiFi yang sama)
-// define('BASE_URL', 'http://192.168.18.116/Rental%20Mobil/');
+// define('BASE_URL', 'http://192.168.171.211/Rental%20Mobil/');
 
 // Untuk akses melalui internet (ganti dengan IP publik atau domain)
 // Contoh jika menggunakan ngrok, cloudflare tunnel, atau layanan sejenis

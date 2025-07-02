@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Tambahkan index untuk token
-CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token);
-CREATE INDEX IF NOT EXISTS idx_users_remember_token ON users(remember_token);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX idx_users_reset_token ON users(reset_token);
+CREATE INDEX idx_users_remember_token ON users(remember_token);
+CREATE INDEX idx_users_role ON users(role);
 
 -- Tabel Kategori Mobil
 CREATE TABLE IF NOT EXISTS kategori_mobil (
@@ -246,10 +246,3 @@ INSERT INTO mobil (kategori_id, merk, model, tahun_produksi, nomor_plat, warna, 
 (4, 'Toyota', 'Yaris', 2021, 'B 8901 JK', 'Kuning', 5, 'otomatis', 'bensin', 450000.00, 'tersedia', 'Toyota Yaris compact dan gesit', 'yaris.jpg', '{"ac": true, "airbag": true, "bluetooth": true, "backup_camera": false, "gps": false}'),
 (5, 'Mitsubishi', 'Pajero Sport', 2021, 'B 9012 KL', 'Hitam', 7, 'otomatis', 'diesel', 950000.00, 'tersedia', 'Mitsubishi Pajero Sport tangguh di segala medan', 'pajero.jpg', '{"ac": true, "airbag": true, "bluetooth": true, "backup_camera": true, "gps": true}'),
 (1, 'Honda', 'HR-V', 2021, 'B 0123 LM', 'Merah', 5, 'otomatis', 'bensin', 600000.00, 'tersedia', 'Honda HR-V stylish dan sporty', 'hrv.jpg', '{"ac": true, "airbag": true, "bluetooth": true, "backup_camera": true, "gps": false}');
-
--- Tambahkan Data User Dummy
-INSERT INTO users (username, password, nama, email, no_telp, alamat, no_ktp, role) VALUES
-('user1', '$2y$10$q8zJz.3Vh8B.PwNJRXvUxe7XY03S9K6ioOqfRO.NTjZdH7MlXD4t2', 'Budi Santoso', 'budi@gmail.com', '081234567891', 'Jl. Merdeka No. 10, Jakarta', '3171234567890001', 'user'),
-('user2', '$2y$10$q8zJz.3Vh8B.PwNJRXvUxe7XY03S9K6ioOqfRO.NTjZdH7MlXD4t2', 'Siti Rahayu', 'siti@gmail.com', '081234567892', 'Jl. Sudirman No. 45, Jakarta', '3171234567890002', 'user'),
-('user3', '$2y$10$q8zJz.3Vh8B.PwNJRXvUxe7XY03S9K6ioOqfRO.NTjZdH7MlXD4t2', 'Joko Widodo', 'joko@gmail.com', '081234567893', 'Jl. Pemuda No. 12, Surabaya', '3571234567890003', 'user');
--- Password: admin123 
